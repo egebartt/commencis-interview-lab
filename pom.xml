@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.commencis.interview</groupId>
+  <artifactId>commencis-interview-lab</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>Commencis Interview Lab</name>
+  <description>Rest Assured API ve Appium Android/iOS test projesi</description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.install.skip>true</maven.install.skip>
+    <maven.deploy.skip>true</maven.deploy.skip>
+
+    <junit.version>5.14.4</junit.version>
+    <rest-assured.version>6.0.1</rest-assured.version>
+    <cucumber.version>7.29.0</cucumber.version>
+    <!-- Appium Java Client surumu; Appium Server surumu ile ayni sey degildir. -->
+    <appium.java-client.version>10.1.1</appium.java-client.version>
+    <selenium.version>4.42.0</selenium.version>
+    <allure.version>2.35.4</allure.version>
+
+    <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
+    <allure-maven.version>3.0.2</allure-maven.version>
+
+    <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
+    <allure.report.directory>${project.build.directory}/allure-report</allure.report.directory>
+
+    <!-- Hangi testlerin calisacagini profile belirler. Profilsiz calistirmada sadece api. -->
+    <test.tags>api</test.tags>
+
+    <!-- CucumberRunnerTest adi *Test.java desenine uydugu icin varsayilan kosumlarda
+         acikca haric tutulur; yalnizca -Pcucumber onu calistirir. -->
+    <failsafe.includes>**/*Test.java</failsafe.includes>
+    <failsafe.excludes>**/CucumberRunnerTest.java</failsafe.excludes>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Tum cucumber modulleri tek surumden gelsin diye BOM kullanilir. -->
+      <dependency>
+        <groupId>io.cucumber</groupId>
+        <artifactId>cucumber-bom</artifactId>
+        <version>${cucumber.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Appium java-client Selenium'u acik araliktan ister ([4.42.0, 5.0));
+           build tekrarlanabilir olsun diye tek surume sabitleniyor. -->
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-api</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-remote-driver</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-support</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.appium</groupId>
+      <artifactId>java-client</artifactId>
+      <version>${appium.java-client.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-support</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Cucumber, TestNG yerine mevcut JUnit Platform uzerinde calisir. -->
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-java</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-junit-platform-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Scenario-scoped dependency injection; static driver/response state gerekmez. -->
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-picocontainer</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- @Suite ile feature'lari calistiran runner icin. -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-suite</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-jupiter</artifactId>
+      <version>${allure.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Cucumber senaryolari da Allure raporuna dussun diye; plugin olarak
+         junit-platform.properties icinde aktive edilir. -->
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-cucumber7-jvm</artifactId>
+      <version>${allure.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+
+      <!-- Testler Failsafe ile calisir; Surefire'in calistiracagi bir sey yok. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <skipTests>true</skipTests>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${maven-failsafe-plugin.version}</version>
+        <configuration>
+          <includes>
+            <include>${failsafe.includes}</include>
+          </includes>
+          <excludes>
+            <exclude>${failsafe.excludes}</exclude>
+          </excludes>
+          <groups>${test.tags}</groups>
+          <!-- Sifir test veya yanlis -Dit.test degeri build'i yesil gostermesin. -->
+          <failIfNoTests>true</failIfNoTests>
+          <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
+          <trimStackTrace>false</trimStackTrace>
+          <!-- Locale sabitlenmezse Rest Assured'in locale'siz toLowerCase() cagrisi yuzunden
+               tr_TR makinede 404 gibi tum non-2xx yanitlar exception firlatiyor. -->
+          <argLine>-Dfile.encoding=UTF-8 -Duser.language=en -Duser.country=US</argLine>
+          <systemPropertyVariables>
+            <allure.results.directory>${allure.results.directory}</allure.results.directory>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <id>integration-tests</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- post-integration-test: Failsafe'in verify goal'u build'i kirmadan once rapor yazilir,
+           boylece test fail olsa da HTML olusur. Fail eden test yine build'i kirar. -->
+      <plugin>
+        <groupId>io.qameta.allure</groupId>
+        <artifactId>allure-maven</artifactId>
+        <version>${allure-maven.version}</version>
+        <configuration>
+          <resultsDirectory>allure-results</resultsDirectory>
+          <reportDirectory>${allure.report.directory}</reportDirectory>
+          <singleFile>true</singleFile>
+        </configuration>
+        <executions>
+          <execution>
+            <id>allure-html-report</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>api</id>
+      <properties>
+        <test.tags>api</test.tags>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>mobile</id>
+      <properties>
+        <test.tags>mobile</test.tags>
+      </properties>
+    </profile>
+
+    <!-- Yalnizca CucumberRunnerTest calisir; JUnit @Test'ler bu profilde kosulmaz.
+         Hangi senaryolarin secilecegini junit-platform.properties icindeki
+         cucumber.filter.tags belirler (varsayilan: @api and @smoke). -->
+    <profile>
+      <id>cucumber</id>
+      <properties>
+        <!-- JUnit group filtresi kullanilmaz: senaryo secimi cucumber.filter.tags ile yapilir,
+             iki ayri filtre katmani birbirini sessizce sifirlamasin. -->
+        <test.tags></test.tags>
+        <failsafe.includes>**/CucumberRunnerTest.java</failsafe.includes>
+        <!-- Bu profilde hicbir test haric tutulmaz; hicbir dosyayla eslesmeyen desen. -->
+        <failsafe.excludes>**/NoTestIsExcludedHere.java</failsafe.excludes>
+      </properties>
+    </profile>
+  </profiles>
+</project>
