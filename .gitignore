@@ -25,3 +25,5 @@ Desktop.ini
 # Local secrets. authToken and friends belong in environment variables, never in a file.
 *.local.properties
 .env
+
+.bar2-report
