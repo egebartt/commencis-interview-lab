@@ -52,15 +52,19 @@ src/test/java/com/commencis/interview/
   api/
     RequestSpecFactory.java ortak Rest Assured yapılandırması
     PostApi.java            /posts endpoint çağrıları (assertion yok)
-  test/
-    mobile/ApiDemosTest.java
+  test/                     JUnit @Test giriş noktaları
     api/PostApiTest.java
-  cucumber/
-    CucumberRunnerTest.java     feature'ları çalıştıran tek runner
-    MobileHooks.java            @mobile senaryolarında driver aç/kapat + fail screenshot
-    MobileTestContext.java      senaryo ömürlü driver sahibi
-    ApiTestContext.java         senaryo ömürlü PostApi + response
-    stepdefinition/             Page ve PostApi'ye delege eden adımlar
+    mobile/ApiDemosTest.java
+  runner/
+    CucumberRunnerTest.java feature'ları çalıştıran tek runner
+  hooks/
+    MobileHooks.java        @mobile senaryolarında driver aç/kapat + fail screenshot
+  context/
+    MobileTestContext.java  senaryo ömürlü driver sahibi (Cucumber)
+    ApiTestContext.java     senaryo ömürlü PostApi + response (Cucumber)
+  stepdefinition/           Cucumber annotation yüzü; Page ve PostApi'ye delege eder
+    api/PostApiStepDefinitions.java
+    mobile/ApiDemosStepDefinitions.java
   util/
     ConfigReader.java       config.properties okur
     JsonReader.java         JSON dosyasını String olarak okur
@@ -68,9 +72,27 @@ src/test/java/com/commencis/interview/
 src/test/resources/
   config.properties
   junit-platform.properties   Cucumber glue / tag / plugin ayarları
-  features/                   .feature dosyaları
+  features/
+    api/post_api.feature
+    mobile/api_demos.feature
   testdata/create-post.json
 ```
+
+**Katman sırası:**
+
+```
+.feature  →  stepdefinition/  →  page/ veya api/  →  driver / HTTP
+@Test     →                      page/ veya api/  →  driver / HTTP
+```
+
+Senaryo birden fazla ekranı ya da birden fazla servisi zincirleyen bir iş akışına dönüştüğünde
+araya **annotation'sız** bir `step/` katmanı eklenir (`stepdefinition → step → page`). Şu an böyle
+bir akış olmadığı için o paket oluşturulmadı.
+
+**`base/` ve `context/` neden ayrı:** ikisi de driver yaşam döngüsü yönetir ama farklı runner'lar
+için. `BaseMobileTest` JUnit tarafında driver'ı kendi instance alanında tutar; `MobileTestContext`
+Cucumber tarafında PicoContainer'ın senaryo başına ürettiği nesnedir. **Aynı driver örneğini
+paylaşmazlar** ve bir koşumda yalnızca biri devrededir.
 
 **Locator ve aksiyon ayrımı:** `ApiDemosLocators` sadece locator'ları ve ekran adını (`PAGE_NAME`)
 tutar. `ApiDemosPage` sadece aksiyonları tutar, hiç locator tanımlamaz. Böylece bir locator
@@ -278,7 +300,20 @@ Adımların glue ile eşleştiğini cihaz açmadan kontrol etmek için dry-run:
 .\mvnw.cmd clean verify -Pcucumber "-Dcucumber.execution.dry-run=true" "-Dcucumber.filter.tags=@mobile and @smoke"
 ```
 
-Dry-run adımları çalıştırmaz ve hook'ları tetiklemez — driver açılmaz.
+Dry-run adımları çalıştırmaz ve hook'ları tetiklemez — driver açılmaz. Bu yüzden dry-run yalnızca
+**glue eşleşmesini** kanıtlar; PicoContainer injection'ını kanıtlamaz. Onun için gerçek koşum gerekir.
+
+### Glue yapılandırması
+
+```properties
+cucumber.glue=com.commencis.interview.hooks,com.commencis.interview.stepdefinition
+```
+
+Glue yalnızca **Cucumber annotation'ı taşıyan** paketleri kapsar. `stepdefinition` alt paketleri
+(`api`, `mobile`) otomatik dahildir. `context` paketi **glue'da değildir**: `MobileTestContext` ve
+`ApiTestContext`, PicoContainer tarafından step definition ve hook constructor'larının bağımlılığı
+olarak çözülür. Yeni bir step definition paketi eklersen bu satıra eklemeyi unutma — aksi halde
+adımlar sessizce **undefined** olur.
 
 ### Bilinen sınırlama: yanlış tag build'i kırmaz
 
@@ -484,8 +519,8 @@ olarak ekle → `ApiDemosPage`'e aksiyon metodu yaz → `ApiDemosTest`'e `@Test`
 
 Tag veya `*Test` son eki eksikse test sessizce çalışmaz — sadece bu iki kural akışı belirler.
 
-**Cucumber senaryosu:** `src/test/resources/features/` altına `.feature` ekle ve tag'le
-(`@api @smoke` veya `@mobile @smoke`) → `cucumber/stepdefinition/` altındaki ilgili sınıfa adımı
+**Cucumber senaryosu:** `src/test/resources/features/api/` veya `features/mobile/` altına `.feature`
+ekle ve tag'le (`@api @smoke` veya `@mobile @smoke`) → `stepdefinition/` altındaki ilgili sınıfa adımı
 yaz. Step definition işi Page veya `PostApi` metoduna delege etmeli; **locator, bekleme, driver
 kullanımı ve request kurulumu orada tekrarlanmaz.** Given/When/Then seviyesinde ince sonuç
 assertion'ları (status kodu, alan değeri, görünürlük) step definition içinde yer alabilir.

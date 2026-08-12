@@ -1,5 +1,6 @@
-package com.commencis.interview.cucumber;
+package com.commencis.interview.hooks;
 
+import com.commencis.interview.context.MobileTestContext;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
@@ -51,4 +52,5 @@ public class MobileHooks {
     public void quitDriver() {
         context.quitDriver();
     }
+
 }

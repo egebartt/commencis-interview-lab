@@ -1,4 +1,4 @@
-package com.commencis.interview.cucumber;
+package com.commencis.interview.context;
 
 import com.commencis.interview.api.PostApi;
 import com.commencis.interview.api.RequestSpecFactory;

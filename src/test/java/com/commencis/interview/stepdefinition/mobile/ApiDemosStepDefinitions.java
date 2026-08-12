@@ -1,6 +1,6 @@
-package com.commencis.interview.cucumber.stepdefinition;
+package com.commencis.interview.stepdefinition.mobile;
 
-import com.commencis.interview.cucumber.MobileTestContext;
+import com.commencis.interview.context.MobileTestContext;
 import com.commencis.interview.page.ApiDemosPage;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -10,7 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * ApiDemos senaryolarinin adimlari; JUnit testleriyle ayni Page aksiyonlarini cagirir.
- * Burada driver.findElement veya bekleme mantigi bulunmaz.
+ * Burada locator, bekleme veya driver kullanimi bulunmaz; yalnizca delegasyon ve
+ * ince sonuc assertion'lari yer alir.
  */
 public class ApiDemosStepDefinitions {
 

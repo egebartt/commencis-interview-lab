@@ -37,7 +37,7 @@ public class ApiDemosPage extends BasePage {
     }
 
     public String getSelectedPlanet() {
-        return getText(ApiDemosLocators.PLANET_DROPDOWN);
+        return getText(ApiDemosLocators.PLANET_DROPDOWN_VALUE);
     }
 
     /** Cihazin geri tusu. */

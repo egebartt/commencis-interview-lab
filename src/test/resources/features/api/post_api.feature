@@ -1,8 +1,6 @@
 @api @smoke
 Feature: Posts API
 
-  Cihaz gerektirmeyen API senaryolari. Adimlar PostApi client'ini cagirir.
-
   Scenario: An existing post is fetched
     When post 1 is requested
     Then the response status should be 200

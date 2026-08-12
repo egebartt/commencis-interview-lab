@@ -1,4 +1,4 @@
-package com.commencis.interview.cucumber;
+package com.commencis.interview.context;
 
 import com.commencis.interview.driver.MobileDriver;
 import io.appium.java_client.AppiumDriver;
@@ -7,8 +7,11 @@ import io.appium.java_client.AppiumDriver;
  * Bir senaryo boyunca yasayan mobil durum. PicoContainer her senaryo icin yeni ornek uretir,
  * bu yuzden static driver alani tutulmaz.
  *
- * <p>Driver constructor'da acilmaz; yalnizca {@link MobileHooks} icindeki
- * {@code @Before("@mobile")} kancasi acar. Boylece @api senaryolarinda cihaz aranmaz.
+ * <p>Driver constructor'da acilmaz; yalnizca MobileHooks icindeki {@code @Before("@mobile")}
+ * kancasi acar. Boylece @api senaryolarinda cihaz aranmaz.
+ *
+ * <p>Bu class yalnizca Cucumber tarafinindir. JUnit testlerinde driver'i BaseMobileTest kendi
+ * instance alaninda tutar; iki runner ayni driver ornegini paylasmaz.
  */
 public class MobileTestContext {
 

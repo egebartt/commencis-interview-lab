@@ -1,6 +1,6 @@
-package com.commencis.interview.cucumber.stepdefinition;
+package com.commencis.interview.stepdefinition.api;
 
-import com.commencis.interview.cucumber.ApiTestContext;
+import com.commencis.interview.context.ApiTestContext;
 import com.commencis.interview.util.JsonReader;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * Posts API senaryolarinin adimlari.
  * Istekleri PostApi atar, durum ApiTestContext'te tutulur; burada Rest Assured
- * yapilandirmasi veya test mantigi tekrar yazilmaz.
+ * yapilandirmasi veya request kurulumu tekrar yazilmaz. Ince sonuc assertion'lari burada kalir.
  */
 public class PostApiStepDefinitions {
 
