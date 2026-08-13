@@ -5,10 +5,6 @@ import io.appium.java_client.AppiumDriver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
-/**
- * Mobile testlerin ortak yasam dongusu: her testten once driver acilir, sonra kapanir.
- * Platform secimi ve capability detaylari {@link MobileDriver} icindedir.
- */
 public abstract class BaseMobileTest {
 
     protected AppiumDriver driver;

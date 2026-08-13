@@ -171,7 +171,12 @@
         </configuration>
       </plugin>
 
-      <!-- Testler Failsafe ile calisir; Surefire'in calistiracagi bir sey yok. -->
+      <!-- Lifecycle'da testler Failsafe ile calisir; Surefire'in test fazinda isi yok.
+           Ancak Bar2 Report plugin'i tek senaryoyu "mvnw surefire:test" ile kosar ve
+           skipTests=true yuzunden hicbir test calismadigi icin Cucumber JSON raporu
+           hic yazilmaz (pipeline: "Report Missing"). Komut satirindan dogrudan cagrilan
+           goal'lar default-cli execution'ini kullandigindan skip yalnizca orada kalkar;
+           "mvn verify" / -Pcucumber davranisi aynen korunur. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -179,6 +184,35 @@
         <configuration>
           <skipTests>true</skipTests>
         </configuration>
+        <executions>
+          <execution>
+            <id>default-cli</id>
+            <configuration>
+              <skipTests>false</skipTests>
+              <!-- Filtresiz cagrida tum *Test.java (cihaz isteyen JUnit testleri dahil)
+                   kosmasin diye yalnizca Cucumber runner'i. -Dtest verilirse Surefire
+                   bu includes'u zaten ezer, yani JUnit tek-test kosumlari etkilenmez. -->
+              <includes>
+                <include>**/CucumberRunnerTest.java</include>
+              </includes>
+              <!-- -Dcucumber.features verildiginde Cucumber engine, class secicilerden
+                   bagimsiz olarak feature'i kendi basina da kesfeder; runner suite'i ile
+                   birlikte ayni senaryo iki kez kosar (mobilde iki Appium session).
+                   Engine dogrudan kosumdan cikarilir; suite icindeki Cucumber engine
+                   kendi launcher'ini kurdugu icin bu filtreden etkilenmez. -->
+              <excludeJUnit5Engines>
+                <engine>cucumber</engine>
+              </excludeJUnit5Engines>
+              <trimStackTrace>false</trimStackTrace>
+              <!-- Failsafe ile ayni locale sabiti: tr_TR makinede Rest Assured'in
+                   locale'siz toLowerCase() cagrisi non-2xx yanitlari patlatiyor. -->
+              <argLine>-Dfile.encoding=UTF-8 -Duser.language=en -Duser.country=US</argLine>
+              <systemPropertyVariables>
+                <allure.results.directory>${allure.results.directory}</allure.results.directory>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

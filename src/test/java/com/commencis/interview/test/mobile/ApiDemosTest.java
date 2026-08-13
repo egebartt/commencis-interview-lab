@@ -6,8 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * ApiDemos uygulamasi uzerinde ornek Android testleri.
@@ -41,5 +40,28 @@ class ApiDemosTest extends BaseMobileTest {
         page.selectPlanet("Jupiter");
 
         assertEquals("Jupiter", page.getSelectedPlanet(), "Secilen gezegen dropdown'da gorunmedi");
+    }
+
+    @Test
+    @DisplayName("Monitored switch açılıp kapatılır")
+    void togglesMonitoredSwitch() {
+        ApiDemosPage page = new ApiDemosPage(driver);
+
+        page.openViews();
+        page.openSwitches();
+
+        assertFalse(page.isMonitoredSwitchOn(), "Monitored switch başlangıçta kapalı olmalı");
+
+        page.clickMonitoredSwitch();
+
+        assertTrue(page.isToastDisplayed("Monitored switch is on"), "'Monitored switch is on' mesajı görünmedi");
+        assertTrue(page.isMonitoredSwitchOn(), "Monitored switch aktif olmadı");
+
+        page.clickMonitoredSwitch();
+
+        assertTrue(page.isToastDisplayed("Monitored switch is off"), "'Monitored switch is off' mesajı görünmedi");
+        assertFalse(page.isMonitoredSwitchOn(), "Monitored switch kapanmadı");
+
+        page.goBack();
     }
 }

@@ -6,6 +6,7 @@ import io.restassured.config.HttpClientConfig;
 import io.restassured.config.LogConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.log.LogDetail;
+import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 
@@ -42,6 +43,10 @@ public final class RequestSpecFactory {
                 .setConfig(config)
                 .setContentType(ContentType.JSON)
                 .setAccept(ContentType.JSON);
+
+        if (ConfigReader.getBoolean("api.log.response", false)) {
+            builder.addFilter(new ResponseLoggingFilter(LogDetail.BODY));
+        }
 
         // Token yalnizca verilmisse eklenir; repository'de bos durur.
         String token = ConfigReader.get("api.auth.token");

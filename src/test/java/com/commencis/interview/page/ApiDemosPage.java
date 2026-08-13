@@ -3,17 +3,12 @@ package com.commencis.interview.page;
 import com.commencis.interview.locator.ApiDemosLocators;
 import io.appium.java_client.AppiumDriver;
 
-/**
- * ApiDemos uygulamasinin ekran aksiyonlari.
- * Locator'lar {@link ApiDemosLocators} icinde tutulur.
- */
 public class ApiDemosPage extends BasePage {
 
     public ApiDemosPage(AppiumDriver driver) {
-        super(driver, ApiDemosLocators.PAGE_NAME);
+        super(driver);
     }
 
-    /** Ana menu acik mi? */
     public boolean isHomePageVisible() {
         return isDisplayed(ApiDemosLocators.ACCESSIBILITY_MENU);
     }
@@ -22,26 +17,38 @@ public class ApiDemosPage extends BasePage {
         click(ApiDemosLocators.VIEWS_MENU);
     }
 
+    public void openMenuItem(String title) {
+        scrollAndClick(ApiDemosLocators.byText(title));
+    }
+
     public boolean isButtonsOptionVisible() {
         return isDisplayed(ApiDemosLocators.BUTTONS_OPTION);
     }
 
-    /** Views listesinde asagi kaydirarak Spinner secenegini acar. */
     public void openSpinner() {
-        scrollUntilVisible(ApiDemosLocators.SPINNER_OPTION).click();
+        scrollAndClick(ApiDemosLocators.SPINNER_OPTION);
+    }
+    public void openSwitches() {
+        openMenuItem("Switches");
     }
 
-    /** Dropdown'i acip verilen gezegeni secer (Views > Spinner ekrani). */
+    public void clickMonitoredSwitch() {
+        click(ApiDemosLocators.MONITORED_SWITCH);
+    }
+
+    public boolean isMonitoredSwitchOn() {
+        return isChecked(ApiDemosLocators.MONITORED_SWITCH);
+    }
+
+    public boolean isToastDisplayed(String message) {
+        return isPresent(ApiDemosLocators.toastMessage(message), 3);
+    }
     public void selectPlanet(String planet) {
-        openDropdownAndSelect(ApiDemosLocators.PLANET_DROPDOWN, ApiDemosLocators.byText(planet));
+        selectOption(ApiDemosLocators.PLANET_DROPDOWN, ApiDemosLocators.byText(planet));
     }
 
     public String getSelectedPlanet() {
         return getText(ApiDemosLocators.PLANET_DROPDOWN_VALUE);
     }
 
-    /** Cihazin geri tusu. */
-    public void goBack() {
-        driver.navigate().back();
-    }
 }

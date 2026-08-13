@@ -28,8 +28,7 @@ public class ApiTestContext {
 
     public String getRequestBody() {
         if (requestBody == null) {
-            throw new IllegalStateException(
-                    "Istek govdesi yuklenmedi. Once govdeyi okuyan Given adimini kullanin.");
+            throw new IllegalStateException("Istek govdesi yuklenmedi. Once govdeyi okuyan Given adimini kullanin.");
         }
         return requestBody;
     }
@@ -40,8 +39,7 @@ public class ApiTestContext {
 
     public Response getResponse() {
         if (response == null) {
-            throw new IllegalStateException(
-                    "Henuz bir istek gonderilmedi. Once istek atan When adimini kullanin.");
+            throw new IllegalStateException("Henuz bir istek gonderilmedi. Once istek atan When adimini kullanin.");
         }
         return response;
     }

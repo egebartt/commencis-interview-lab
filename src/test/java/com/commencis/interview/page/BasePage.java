@@ -4,345 +4,167 @@ import com.commencis.interview.platform.MobilePlatform;
 import com.commencis.interview.util.ConfigReader;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.HidesKeyboard;
-import io.appium.java_client.remote.SupportsContextSwitching;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
-/** Tum page class'larinin kullandigi ortak bekleme, tiklama ve kaydirma islemleri. */
 public abstract class BasePage {
 
     private static final int MAX_SCROLL_ATTEMPT = 5;
 
-    protected final AppiumDriver driver;
-    protected final WebDriverWait wait;
+    private final AppiumDriver driver;
+    private final WebDriverWait wait;
 
-    /** Hata mesajlarinda hangi ekranda olundugunu gostermek icin tutulur. */
-    private final String pageName;
-
-    protected BasePage(AppiumDriver driver, String pageName) {
+    /** Page siniflarinin kullanacagi driver ve explicit wait'i hazirlar. */
+    protected BasePage(AppiumDriver driver) {
         this.driver = driver;
-        this.pageName = pageName;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(ConfigReader.getInt("mobile.explicit.wait.seconds", 15)));
+        this.wait = new WebDriverWait(
+                driver,
+                Duration.ofSeconds(ConfigReader.getInt("mobile.explicit.wait.seconds", 15))
+        );
     }
 
-    /** Page'in ekran adi; locator class'indaki PAGE_NAME degerinden gelir. */
-    public String getPageName() {
-        return pageName;
-    }
-
-    // ------------------------------------------------------------------
-    // Bekleme
-    // ------------------------------------------------------------------
-
-    /** Element gorunur olana kadar bekler ve dondurur. */
-    protected WebElement waitForVisible(By locator) {
-        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
-    }
-
-    /** Element tiklanabilir olana kadar bekler ve dondurur. */
-    protected WebElement waitForClickable(By locator) {
-        return wait.until(ExpectedConditions.elementToBeClickable(locator));
-    }
-
-    /** Element gorunmez olana kadar bekler; loading gostergesi gibi gecici elemanlar icin. */
-    protected void waitForInvisible(By locator) {
-        wait.until(ExpectedConditions.invisibilityOfElementLocated(locator));
-    }
-
-    // ------------------------------------------------------------------
-    // Etkilesim
-    // ------------------------------------------------------------------
-
-    /** Element tiklanabilir olana kadar bekler ve tiklar. */
+    /** Element tiklanabilir olana kadar bekleyip tiklar. */
     protected void click(By locator) {
-        waitForClickable(locator).click();
+        wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
 
-    /**
-     * Element verilen sure icinde tiklanabilir olursa tiklar.
-     * Opsiyonel popup/banner gibi her zaman cikmayan elemanlar icindir; tiklandiysa true doner.
-     */
-    protected boolean clickIfVisible(By locator, int seconds) {
-        try {
-            waitOf(seconds).until(ExpectedConditions.elementToBeClickable(locator)).click();
-            return true;
-        } catch (TimeoutException e) {
-            return false;
-        }
-    }
-
-    /** Alani temizlemeden yazar. */
-    protected void type(By locator, String text) {
-        waitForVisible(locator).sendKeys(text);
-    }
-
-    /** Alani temizler, sonra yazar. */
+    /** Alani gorunur olunca temizleyip yeni metni yazar. */
     protected void clearAndType(By locator, String text) {
-        WebElement element = waitForVisible(locator);
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         element.clear();
         element.sendKeys(text);
     }
 
+    /** Gorunur elementin metnini dondurur. */
     protected String getText(By locator) {
-        return waitForVisible(locator).getText();
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator)).getText();
     }
 
-    /**
-     * Elementin attribute degerini dondurur.
-     * iOS'ta gorunen metin cogunlukla getText() yerine "label" veya "value" attribute'unda olur.
-     */
+    /** Gorunur elementin istenen attribute degerini dondurur. */
     protected String getAttribute(By locator, String attribute) {
-        return waitForVisible(locator).getAttribute(attribute);
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator)).getAttribute(attribute);
     }
 
-    /** Element varsayilan bekleme suresi icinde gorunurse true, gorunmezse false doner. */
+    /** Element varsayilan bekleme suresinde gorunurse true dondurur. */
     protected boolean isDisplayed(By locator) {
-        return isDisplayed(locator, defaultWaitSeconds());
-    }
-
-    /** Element verilen sure icinde gorunurse true, gorunmezse false doner. */
-    protected boolean isDisplayed(By locator, int seconds) {
         try {
-            waitOf(seconds).until(ExpectedConditions.visibilityOfElementLocated(locator));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
             return true;
         } catch (TimeoutException e) {
             return false;
         }
     }
 
-    /** Locator'a uyan tum elemanlari dondurur; hicbiri yoksa bos liste. Bekleme yapmaz. */
-    protected List<WebElement> findElements(By locator) {
-        return driver.findElements(locator);
+    /** Element verilen surede UI hiyerarsisinde bulunursa true dondurur. */
+    protected boolean isPresent(By locator, int seconds) {
+        try {
+            waitOf(seconds).until(ExpectedConditions.presenceOfElementLocated(locator));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
     }
 
-    /** Klavyeyi kapatir. */
+    /** Checkbox, radio veya switch elementinin secili durumunu dondurur. */
+    protected boolean isChecked(By locator) {
+        String value = MobilePlatform.current().isAndroid()
+                ? getAttribute(locator, "checked")
+                : getAttribute(locator, "value");
+        return "true".equalsIgnoreCase(value) || "1".equals(value);
+    }
+
+    /** Gorunur element etkilesime aciksa true dondurur. */
+    protected boolean isEnabled(By locator) {
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator)).isEnabled();
+    }
+
+    /** Aciksa mobil klavyeyi kapatir. */
     protected void hideKeyboard() {
         if (driver instanceof HidesKeyboard keyboard) {
-            keyboard.hideKeyboard();
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // Liste islemleri
-    // ------------------------------------------------------------------
-
-    /**
-     * Listede metni verilen degere birebir esit olan elemana tiklar.
-     *
-     * <p>Karsilastirma iki tarafta da trim edilerek yapilir, icerme (contains) kullanilmaz:
-     * "Jupiter" araninca "Jupiter 2" secilmesin diye. Bulunamazsa listedeki tum metinleri
-     * gostererek hata verir; sessizce baska elemana tiklamaz.
-     */
-    protected void selectListItemByText(By locator, String expectedText) {
-        waitForVisible(locator);
-        String expected = expectedText.trim();
-        List<WebElement> items = findElements(locator);
-        for (WebElement item : items) {
-            if (expected.equals(item.getText().trim())) {
-                item.click();
-                return;
+            try {
+                keyboard.hideKeyboard();
+            } catch (WebDriverException ignored) {
+                // Klavye zaten kapali olabilir.
             }
         }
-        throw new NoSuchElementException(String.format(
-                "'%s' listede bulunamadi @ %s%nLocator: %s%nListedeki metinler:%n%s",
-                expectedText, pageName, locator, formatItemTexts(items)));
     }
 
-    /**
-     * Listede verilen index'teki elemana tiklar.
-     * Index liste disindaysa son elemana dusulmez; acik hata verilir.
-     */
-    protected void selectListItemByIndex(By locator, int index) {
-        waitForVisible(locator);
-        List<WebElement> items = findElements(locator);
-        if (index < 0 || index >= items.size()) {
-            throw new IndexOutOfBoundsException(String.format(
-                    "Liste index'i gecersiz @ %s. Istenen index: %d, liste boyutu: %d.%nLocator: %s",
-                    pageName, index, items.size(), locator));
-        }
-        items.get(index).click();
-    }
-
-    /**
-     * Native dropdown'i acar ve secenegi tiklar.
-     * Native mobilde Selenium Select calismaz; dropdown acilip acilan liste elemanina tiklanir.
-     */
-    protected void openDropdownAndSelect(By dropdown, By option) {
+    /** Dropdown'i acip verilen secenegi secer. */
+    protected void selectOption(By dropdown, By option) {
         click(dropdown);
         click(option);
     }
 
-    // ------------------------------------------------------------------
-    // Kaydirma
-    // ------------------------------------------------------------------
-
-    protected void scrollDown() {
-        scroll("down");
-    }
-
-    protected void scrollUp() {
-        scroll("up");
-    }
-
-    protected void swipeLeft() {
-        swipe("left");
-    }
-
-    protected void swipeRight() {
-        swipe("right");
-    }
-
-    /**
-     * Element ekranda gorunur olana kadar asagi kaydirir.
-     *
-     * <p>Sayfa kaynaginda bulunup ekranda gorunmeyen eleman kaydirmayi durdurmaz; bu yuzden
-     * varlik degil gorunurluk kontrol edilir. Dongu icinde uzun bekleme yapilmaz, son deneme
-     * sonrasinda standart bekleme ile bir kez daha denenir.
-     */
+    /** Hedef element gorunene kadar asagi kaydirip elementi dondurur. */
     protected WebElement scrollUntilVisible(By locator) {
         for (int attempt = 0; attempt < MAX_SCROLL_ATTEMPT; attempt++) {
-            WebElement displayed = findDisplayed(locator);
-            if (displayed != null) {
-                return displayed;
+            WebElement displayedElement = findDisplayed(locator);
+            if (displayedElement != null) {
+                return displayedElement;
             }
             scrollDown();
         }
-        // Eleman kaydirma sonrasi gecikmeli render ediliyor olabilir; son sans.
-        return waitForVisible(locator);
+        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
 
-    // ------------------------------------------------------------------
-    // Context (WebView / native)
-    // ------------------------------------------------------------------
-
-    /**
-     * Native app'ten WebView context'ine gecer.
-     *
-     * <p>Hybrid uygulamalarda WebView context'i sayfa yuklendikten birkac saniye sonra olusabilir;
-     * bu yuzden liste tek seferde okunmaz, standart bekleme suresi boyunca yeniden sorgulanir.
-     */
-    protected void switchToWebView() {
-        SupportsContextSwitching contextSwitching = contextSwitching();
-        String webViewContext;
-        try {
-            webViewContext = wait.until(ignored -> findWebViewContext(contextSwitching));
-        } catch (TimeoutException e) {
-            throw new NoSuchElementException(String.format(
-                    "WebView context bekleme suresi icinde olusmadi @ %s. Mevcut context'ler: %s",
-                    pageName, contextSwitching.getContextHandles()), e);
-        }
-        contextSwitching.context(webViewContext);
+    /** Hedef element gorunene kadar asagi kaydirip tiklar. */
+    protected void scrollAndClick(By locator) {
+        scrollUntilVisible(locator).click();
     }
 
-    /** Native app context'ine geri doner. */
-    protected void switchToNativeContext() {
-        contextSwitching().context("NATIVE_APP");
+    /** Cihazin geri aksiyonunu calistirir. */
+    public void goBack() {
+        driver.navigate().back();
     }
 
-    // ------------------------------------------------------------------
-    // Private yardimcilar
-    // ------------------------------------------------------------------
-
-    private int defaultWaitSeconds() {
-        return ConfigReader.getInt("mobile.explicit.wait.seconds", 15);
-    }
-
+    /** Verilen sureye sahip yeni bir explicit wait dondurur. */
     private WebDriverWait waitOf(int seconds) {
         return new WebDriverWait(driver, Duration.ofSeconds(seconds));
     }
 
-    /** Locator'a uyan ve ekranda gorunen ilk elemani dondurur; yoksa null. Bekleme yapmaz. */
+    /** Locator'a uyan gorunur ilk elementi beklemeden dondurur. */
     private WebElement findDisplayed(By locator) {
         for (WebElement element : driver.findElements(locator)) {
             try {
                 if (element.isDisplayed()) {
                     return element;
                 }
-            } catch (StaleElementReferenceException e) {
-                // Liste kaydirma sirasinda yenilendi. Hata gizlenmiyor: bir sonraki denemede
-                // yeniden aranir, hicbir denemede bulunamazsa scrollUntilVisible sonunda rapor edilir.
+            } catch (StaleElementReferenceException ignored) {
+                // Scroll sirasinda yenilenen element bir sonraki denemede tekrar aranir.
             }
         }
         return null;
     }
 
-    /**
-     * Kaydirma. Her platform kendi driver'inin native gesture komutunu kullanir:
-     * Android'de UiAutomator2 'mobile: scrollGesture', iOS'ta XCUITest 'mobile: scroll'.
-     */
-    private void scroll(String direction) {
+    /** Aktif platformun native gesture komutuyla asagi kaydirir. */
+    private void scrollDown() {
         if (MobilePlatform.current().isAndroid()) {
-            driver.executeScript("mobile: scrollGesture", androidGestureArgs(direction));
+            driver.executeScript("mobile: scrollGesture", androidScrollArguments());
         } else {
-            driver.executeScript("mobile: scroll", Map.of("direction", direction));
+            driver.executeScript("mobile: scroll", Map.of("direction", "down"));
         }
     }
 
-    /** Kaydirma ile ayni platform ayrimi: 'mobile: swipeGesture' (Android) / 'mobile: swipe' (iOS). */
-    private void swipe(String direction) {
-        if (MobilePlatform.current().isAndroid()) {
-            driver.executeScript("mobile: swipeGesture", androidGestureArgs(direction));
-        } else {
-            driver.executeScript("mobile: swipe", Map.of("direction", direction));
-        }
-    }
-
-    /** UiAutomator2 gesture komutlari hedef alan ister; ekranin ortadaki %80'i kullanilir. */
-    private Map<String, Object> androidGestureArgs(String direction) {
+    /** Android scroll gesture icin ekranin orta alanini hedefleyen argumanlari dondurur. */
+    private Map<String, Object> androidScrollArguments() {
         Dimension screen = driver.manage().window().getSize();
-        Map<String, Object> args = new HashMap<>();
-        args.put("left", (int) (screen.getWidth() * 0.1));
-        args.put("top", (int) (screen.getHeight() * 0.1));
-        args.put("width", (int) (screen.getWidth() * 0.8));
-        args.put("height", (int) (screen.getHeight() * 0.8));
-        args.put("direction", direction);
-        args.put("percent", 0.75);
-        return args;
-    }
-
-    /** Polling icin: WebView context'i varsa dondurur, yoksa null (WebDriverWait tekrar dener). */
-    private String findWebViewContext(SupportsContextSwitching contextSwitching) {
-        return contextSwitching.getContextHandles().stream()
-                .filter(context -> context.toLowerCase(Locale.ROOT).contains("webview"))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private SupportsContextSwitching contextSwitching() {
-        if (driver instanceof SupportsContextSwitching contextSwitching) {
-            return contextSwitching;
-        }
-        throw new UnsupportedOperationException(
-                "Driver context degistirmeyi desteklemiyor: " + driver.getClass().getName());
-    }
-
-    /** Liste elemanlarinin metinlerini numarali, okunabilir bicimde dondurur. */
-    private String formatItemTexts(List<WebElement> items) {
-        if (items.isEmpty()) {
-            return "  (liste bos)";
-        }
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            String text;
-            try {
-                text = items.get(i).getText();
-            } catch (StaleElementReferenceException e) {
-                text = "[eleman yenilendi, metin okunamadi]";
-            }
-            builder.append(String.format("  %2d. \"%s\"%n", i + 1, text));
-        }
-        return builder.toString().stripTrailing();
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("left", (int) (screen.getWidth() * 0.1));
+        arguments.put("top", (int) (screen.getHeight() * 0.1));
+        arguments.put("width", (int) (screen.getWidth() * 0.8));
+        arguments.put("height", (int) (screen.getHeight() * 0.8));
+        arguments.put("direction", "down");
+        arguments.put("percent", 0.75);
+        return arguments;
     }
 }

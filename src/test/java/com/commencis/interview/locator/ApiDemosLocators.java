@@ -15,6 +15,9 @@ public final class ApiDemosLocators {
     public static final By VIEWS_MENU = PlatformBy.of(AppiumBy.accessibilityId("Views"), null);
     public static final By BUTTONS_OPTION = PlatformBy.of(AppiumBy.accessibilityId("Buttons"), null);
     public static final By SPINNER_OPTION = PlatformBy.of(AppiumBy.accessibilityId("Spinner"), null);
+    public static final By SWITCHES_OPTION = AppiumBy.accessibilityId("Switches");
+    public static final By MONITORED_SWITCH = AppiumBy.id("io.appium.android.apis:id/monitored_switch");
+
 
     // Views/Spinner ekraninda iki dropdown var: spinner1 = "Color:", spinner2 = "Planet:".
     public static final By PLANET_DROPDOWN = PlatformBy.of(AppiumBy.id("io.appium.android.apis:id/spinner2"), null);
@@ -32,7 +35,9 @@ public final class ApiDemosLocators {
 
     /** Metne gore dinamik locator uretir. */
     public static By byText(String text) {
-        return PlatformBy.of(
-                AppiumBy.androidUIAutomator("new UiSelector().text(\"" + text + "\")"), null);
+        return PlatformBy.of(AppiumBy.androidUIAutomator("new UiSelector().text(\"" + text + "\")"), null);
+    }
+    public static By toastMessage(String message) {
+        return AppiumBy.xpath("//android.widget.Toast[@text='" + message + "']");
     }
 }

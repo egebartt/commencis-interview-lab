@@ -9,11 +9,7 @@ import io.cucumber.java.en.When;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/**
- * Posts API senaryolarinin adimlari.
- * Istekleri PostApi atar, durum ApiTestContext'te tutulur; burada Rest Assured
- * yapilandirmasi veya request kurulumu tekrar yazilmaz. Ince sonuc assertion'lari burada kalir.
- */
+
 public class PostApiStepDefinitions {
 
     private final ApiTestContext context;

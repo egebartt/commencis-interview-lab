@@ -18,18 +18,28 @@ public class PostApi {
     }
 
     public Response getPost(int id) {
-        return given().spec(spec).get("/posts/{id}", id);
+        return given()
+                .spec(spec)
+                .get("/posts/{id}", id);
     }
 
     public Response createPost(String requestBody) {
-        return given().spec(spec).body(requestBody).post("/posts");
+        return given()
+                .spec(spec)
+                .body(requestBody)
+                .post("/posts");
     }
 
     public Response updatePost(int id, String requestBody) {
-        return given().spec(spec).body(requestBody).put("/posts/{id}", id);
+        return given()
+                .spec(spec)
+                .body(requestBody)
+                .put("/posts/{id}", id);
     }
 
     public Response deletePost(int id) {
-        return given().spec(spec).delete("/posts/{id}", id);
+        return given()
+                .spec(spec)
+                .delete("/posts/{id}", id);
     }
 }
