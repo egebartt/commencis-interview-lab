@@ -21,6 +21,7 @@
 
     <junit.version>5.14.4</junit.version>
     <rest-assured.version>6.0.1</rest-assured.version>
+    <gson.version>2.13.2</gson.version>
     <cucumber.version>7.29.0</cucumber.version>
     <!-- Appium Java Client surumu; Appium Server surumu ile ayni sey degildir. -->
     <appium.java-client.version>10.1.1</appium.java-client.version>
@@ -99,6 +100,15 @@
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <version>${rest-assured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Rest Assured, Map/POJO body'yi JSON'a cevirmek icin classpath'teki serializer'i kullanir.
+         Gson zaten Appium java-client ile transitif geliyordu; API davranisi mobile bagimliligina
+         bagli kalmasin diye dogrudan bildiriliyor (ayni surum, cozumleme degismez). -->
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
       <scope>test</scope>
     </dependency>
 

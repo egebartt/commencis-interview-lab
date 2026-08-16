@@ -2,6 +2,7 @@ package com.commencis.interview.api;
 
 import com.commencis.interview.util.ConfigReader;
 import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.HeaderConfig;
 import io.restassured.config.HttpClientConfig;
 import io.restassured.config.LogConfig;
 import io.restassured.config.RestAssuredConfig;
@@ -20,7 +21,17 @@ import java.util.Set;
  */
 public final class RequestSpecFactory {
 
-    private static final Set<String> SECRET_HEADERS = Set.of("Authorization", "Cookie", "Proxy-Authorization", "X-Api-Key");
+    private static final Set<String> SECRET_HEADERS = Set.of(
+            "Authorization",
+            "Cookie",
+            "Proxy-Authorization",
+            "Api-Key",
+            "X-Api-Key",
+            "Client-Key",
+            "X-Client-Key",
+            "Secret-Key",
+            "Client-Secret",
+            "X-Client-Secret");
 
     private RequestSpecFactory() {
     }
@@ -30,6 +41,16 @@ public final class RequestSpecFactory {
         int timeoutMillis = ConfigReader.getInt("api.timeout.seconds", 20) * 1000;
 
         RestAssuredConfig config = RestAssuredConfig.newConfig()
+                // Global spec ile istek bazli header birlikte verilirse son deger kazanir.
+                .headerConfig(HeaderConfig.headerConfig().overwriteHeadersWithName(
+                        "Authorization",
+                        "Api-Key",
+                        "X-Api-Key",
+                        "Client-Key",
+                        "X-Client-Key",
+                        "Secret-Key",
+                        "Client-Secret",
+                        "X-Client-Secret"))
                 // Sadece assertion basarisiz olursa request/response yazilir; secret header'lar maskelenir.
                 .logConfig(LogConfig.logConfig()
                         .enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.ALL)
@@ -39,11 +60,26 @@ public final class RequestSpecFactory {
                         .setParam("http.socket.timeout", timeoutMillis));
 
         RequestSpecBuilder builder = new RequestSpecBuilder()
-                .setBaseUri(ConfigReader.require("api.base.url"))
                 .setConfig(config)
                 .setContentType(ContentType.JSON)
                 .setAccept(ContentType.JSON);
 
+        // Opsiyoneldir: doluysa relative path'ler ("/posts/1") bu adrese gore cozulur, bos ise
+        // testte full URL verilir. Zorunlu ayar degildir; ApiClient iki kullanimi da destekler.
+        String baseUrl = ConfigReader.get("api.base.url");
+        if (!baseUrl.isEmpty()) {
+            builder.setBaseUri(baseUrl.replaceAll("/+$", ""));
+        }
+
+        // Gonderilen istegi yazar. builder.log(...) kullanilir, cunku RequestLoggingFilter blacklist'i
+        // constructor'dan alir; bu metot onu yukaridaki LogConfig'ten okuyup verir, yani secret
+        // header'lar burada da maskelenir. Filtre elle kurulursa maskeleme calismaz.
+        // setConfig'ten sonra cagrilmalidir.
+        if (ConfigReader.getBoolean("api.log.request", false)) {
+            builder.log(LogDetail.ALL);
+        }
+        // Yanit yalnizca BODY olarak yazilir: ResponseLoggingFilter blacklist parametresi almadigi
+        // icin LogDetail.ALL yapilirsa response header'lari maskelenmeden basilir.
         if (ConfigReader.getBoolean("api.log.response", false)) {
             builder.addFilter(new ResponseLoggingFilter(LogDetail.BODY));
         }

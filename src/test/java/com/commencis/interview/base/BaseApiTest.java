@@ -1,5 +1,6 @@
 package com.commencis.interview.base;
 
+import com.commencis.interview.api.ApiClient;
 import com.commencis.interview.api.RequestSpecFactory;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,9 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 public abstract class BaseApiTest {
 
     protected RequestSpecification spec;
+    protected ApiClient api;
 
     @BeforeEach
     protected void prepareSpec() {
         spec = RequestSpecFactory.create();
+        api = new ApiClient(spec);
     }
 }

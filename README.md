@@ -51,9 +51,13 @@ src/test/java/com/commencis/interview/
     ApiDemosPage.java       sadece ekran aksiyonları, locator tutmaz
   api/
     RequestSpecFactory.java ortak Rest Assured yapılandırması
+    ApiClient.java          tek dinamik send() + get/post/put/patch/delete (assertion yok)
+    ApiRequestException.java geçerli Response alınamadığında hata tipini söyler
     PostApi.java            /posts endpoint çağrıları (assertion yok)
   test/                     JUnit @Test giriş noktaları
     api/PostApiTest.java
+    api/ManualUrlApiTest.java
+    api/ApiErrorReportingTest.java
     mobile/ApiDemosTest.java
   runner/
     CucumberRunnerTest.java feature'ları çalıştıran tek runner
@@ -110,6 +114,10 @@ capability değiştirmek için teste, test akışını değiştirmek için drive
 (Cucumber) aynı factory'yi çağırır, Rest Assured yapılandırması iki yerde kopyalanmaz. `PostApi`
 sadece istek atar ve `Response` döner — **assertion yapmaz**. Doğrulama testte/adımda kalır; bu
 sayede aynı `PostApi` hem 200 hem 404 senaryosuna hizmet eder.
+
+**ApiClient ve PostApi ayrımı:** `ApiClient` *nasıl* istek atılacağını bilir (metot, URL çözümü,
+header, body, hata sınıflandırma). `PostApi` *hangi* endpoint'in çağrıldığını bilir. Tek bir
+`send(Method, url, body, headers)` metodu vardır; `get/post/put/patch/delete` ona delege eder.
 
 ---
 
@@ -354,8 +362,16 @@ android.udid=            ->  -Dandroid.udid=emulator-5554   veya   ANDROID_UDID=
 | `ios.udid` | `xcrun xctrace list devices` çıktısından |
 | `ios.app.path` | Doluysa uygulama kurulur, boşsa `ios.bundle.id` zorunlu |
 | `ios.bundle.id` | Cihazdaki uygulamayı açmak için |
-| `api.base.url` | Test edilen API |
+| `api.base.url` | Test edilen API. **Opsiyonel:** doluysa relative path (`/posts/1`), boşsa testte full URL |
 | `api.auth.token` | **Boş bırakılır**, gerekirse `-Dapi.auth.token=...` |
+| `api.log.request` | Varsayılan `false`. Gönderilen isteği yazar (secret header'lar maskeli) |
+| `api.log.response` | Yanıt gövdesini yazar |
+
+Request log'u yalnızca gerektiğinde aç:
+
+```powershell
+.\mvnw.cmd verify -Papi "-Dapi.log.request=true"
+```
 
 `mobile.platform` hem driver'ı hem locator seçimini besleyen tek kaynaktır; ikisi tanım gereği
 tutarlıdır. Bilinmeyen bir değer verilirse koşum açık hatayla durur:
@@ -440,6 +456,57 @@ class yüklenirken bir kez yapılır; aynı JVM içinde paralel Android + iOS ko
 `PostApi` dört endpoint metodu içerir: `getPost`, `createPost`, `updatePost`, `deletePost`.
 `PostApiTest` içindeki örnekler: GET alan doğrulama, JSON dosyasından POST, PUT, DELETE,
 404 negatif testi ve bir yanıttan alınan değeri sonraki istekte kullanma.
+
+### İki kullanım biçimi
+
+Adres, gövde ve header doğrudan testin içine yazılabilir — ayar dosyasına dokunmak gerekmez:
+
+```java
+String url = "https://example.com/api/users";
+String body = """
+        { "name": "Bartu", "email": "bartu@test.com" }
+        """;
+Map<String, String> headers = Map.of("Authorization", "Bearer token", "Client-Key", "client-key");
+
+api.post(url, body, headers)
+        .then()
+        .statusCode(201)
+        .body("name", equalTo("Bartu"));
+```
+
+Aynı servis üzerinde çalışılıyorsa `api.base.url` bir kez tanımlanır, testte yalnızca endpoint kalır:
+
+```java
+api.get("/posts/1").then().statusCode(200);
+```
+
+`api.base.url` bir test adımı değil, ortak bir environment/config değeridir. Senaryo öncesi ortak
+hazırlığı yapan yer `BaseApiTest` içindeki `@BeforeEach`'tir; bu yönüyle Cucumber'ın
+`Background` / `@Before` yaklaşımına benzer.
+
+İkisi birlikte de çalışır: `api.base.url` dolu olsa bile full URL verilirse o adrese gidilir. Body
+`String` olmak zorunda değil; `Map` veya JSON'a serialize edilebilen bir POJO da verilebilir.
+
+### Retry yok, status doğrulaması testte
+
+İstek **bir kez** gönderilir — gitmiyorsa zaten bir sorun vardır, tekrar denemek hatayı gizler.
+`ApiClient` hiçbir status kodunu doğrulamaz: `400`, `404`, `500` de `Response` olarak döner,
+beklenen kodu `@Test` söyler. Bu yüzden aynı client hem pozitif hem negatif senaryoya hizmet eder.
+
+### Hata tipi mesajda görünür
+
+Yalnızca istek **geçerli bir HTTP Response üretemeden** başarısız olduğunda `ApiRequestException`
+fırlar ve sorunun nerede olduğunu söyler; orijinal hata `cause` olarak korunur. Sunucuya ulaşılmış
+olması bunu engellemez — read timeout ve TLS handshake hataları da bu kapsamdadır:
+
+```
+CONNECTION_ERROR - GET http://127.0.0.1:59164/posts/1 failed: ConnectException: Connection refused
+DNS_ERROR        - GET http://yok.invalid/posts/1 failed: UnknownHostException: ...
+TIMEOUT_ERROR    - GET http://127.0.0.1:59161/slow failed: SocketTimeoutException: Read timed out
+```
+
+Kategoriler: `DNS_ERROR`, `CONNECTION_ERROR`, `TIMEOUT_ERROR`, `TLS_ERROR`, `REQUEST_ERROR`.
+Sınıflandırma cause zinciri gezilerek yapılır, çünkü gerçek neden çoğu zaman sarmalanmış gelir.
 
 ### JSON body okuma
 

@@ -1,45 +1,32 @@
 package com.commencis.interview.api;
 
+import com.commencis.interview.util.ConfigReader;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
-import static io.restassured.RestAssured.given;
-
-/**
- * /posts endpoint'ine istek atar.
- * Assertion yapmaz; Response dondurur, dogrulamayi test yapar.
- */
-public class PostApi {
-
-    private final RequestSpecification spec;
+public class PostApi extends ApiClient {
 
     public PostApi(RequestSpecification spec) {
-        this.spec = spec;
+        super(spec);
     }
 
     public Response getPost(int id) {
-        return given()
-                .spec(spec)
-                .get("/posts/{id}", id);
+        return get(defaultUrl("/posts/" + id));
     }
 
     public Response createPost(String requestBody) {
-        return given()
-                .spec(spec)
-                .body(requestBody)
-                .post("/posts");
+        return post(defaultUrl("/posts"), requestBody);
     }
 
     public Response updatePost(int id, String requestBody) {
-        return given()
-                .spec(spec)
-                .body(requestBody)
-                .put("/posts/{id}", id);
+        return put(defaultUrl("/posts/" + id), requestBody);
     }
 
     public Response deletePost(int id) {
-        return given()
-                .spec(spec)
-                .delete("/posts/{id}", id);
+        return delete(defaultUrl("/posts/" + id));
+    }
+
+    private String defaultUrl(String path) {
+        return ConfigReader.require("api.base.url").replaceAll("/+$", "") + path;
     }
 }
