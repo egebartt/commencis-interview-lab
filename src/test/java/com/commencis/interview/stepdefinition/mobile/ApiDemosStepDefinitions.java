@@ -1,7 +1,6 @@
 package com.commencis.interview.stepdefinition.mobile;
 
-import com.commencis.interview.context.MobileTestContext;
-import com.commencis.interview.page.ApiDemosPage;
+import com.commencis.interview.mobile.page.ApiDemosPage;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -10,50 +9,57 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * ApiDemos senaryolarinin adimlari; JUnit testleriyle ayni Page aksiyonlarini cagirir.
- * Burada locator, bekleme veya driver kullanimi bulunmaz; yalnizca delegasyon ve
- * ince sonuc assertion'lari yer alir.
+ * ApiDemos senaryolarinin is dili adimlari. Locator, bekleme veya driver kullanimi yoktur;
+ * yalnizca Page Object cagrisi ve sonuc dogrulamasi yapilir.
+ *
+ * <p>Page, PicoContainer tarafindan enjekte edilir; senaryo icinde elle olusturulmaz.
  */
 public class ApiDemosStepDefinitions {
 
-    private final MobileTestContext context;
-    private ApiDemosPage apiDemosPage;
+    private final ApiDemosPage apiDemos;
 
-    public ApiDemosStepDefinitions(MobileTestContext context) {
-        this.context = context;
-    }
-
-    private ApiDemosPage page() {
-
-        if (apiDemosPage == null) {
-            apiDemosPage = new ApiDemosPage(context.getDriver());
-        }
-        return apiDemosPage;
+    public ApiDemosStepDefinitions(ApiDemosPage apiDemos) {
+        this.apiDemos = apiDemos;
     }
 
     @Given("the Api Demos home screen is visible")
     public void homeScreenIsVisible() {
-        assertTrue(page().isHomePageVisible(), "Ana menu gorunmedi");
+        assertTrue(apiDemos.isHomePageVisible(), "Ana menu gorunmedi");
     }
 
     @When("the user opens the Views menu")
     public void openViewsMenu() {
-        page().openViews();
+        apiDemos.openViews();
     }
 
     @Then("the Buttons option should be visible")
     public void buttonsOptionIsVisible() {
-        assertTrue(page().isButtonsOptionVisible(), "Views ekraninda Buttons gorunmedi");
+        assertTrue(apiDemos.isButtonsOptionVisible(), "Views ekraninda Buttons gorunmedi");
+    }
+
+    @When("the user opens the Spinner screen")
+    public void openSpinnerScreen() {
+        apiDemos.openSpinner();
+    }
+
+    @When("the user selects {string} from the planet dropdown")
+    public void selectPlanet(String planet) {
+        apiDemos.selectPlanet(planet);
+    }
+
+    @Then("the selected planet should be {string}")
+    public void selectedPlanetShouldBe(String expectedPlanet) {
+        assertEquals(expectedPlanet, apiDemos.getSelectedPlanet(), "Secilen gezegen dropdown'da gorunmedi");
     }
 
     @When("the user opens the Switches screen")
     public void openSwitchesScreen() {
-        page().openSwitches();
+        apiDemos.openSwitches();
     }
 
     @When("the user taps the monitored switch")
     public void tapMonitoredSwitch() {
-        page().clickMonitoredSwitch();
+        apiDemos.clickMonitoredSwitch();
     }
 
     @Then("the monitored switch should be {word}")
@@ -61,17 +67,14 @@ public class ApiDemosStepDefinitions {
         boolean expectedOn = switch (expectedState) {
             case "on" -> true;
             case "off" -> false;
-            default -> throw new IllegalArgumentException("Switch durumu 'on' veya 'off' olmalı: " + expectedState);
+            default -> throw new IllegalArgumentException("Switch durumu 'on' veya 'off' olmali: " + expectedState);
         };
-        assertEquals(expectedOn, page().isMonitoredSwitchOn(), "Monitored switch beklenen durumda değil: " + expectedState);
+        assertEquals(expectedOn, apiDemos.isMonitoredSwitchOn(),
+                "Monitored switch beklenen durumda degil: " + expectedState);
     }
 
     @Then("the {string} toast should be visible")
     public void toastShouldBeVisible(String message) {
-        assertTrue(
-                page().isToastDisplayed(message),
-                "Toast mesajı görünmedi: " + message
-        );
+        assertTrue(apiDemos.isToastDisplayed(message), "Toast mesaji gorunmedi: " + message);
     }
-
 }

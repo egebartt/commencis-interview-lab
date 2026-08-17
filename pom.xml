@@ -22,6 +22,7 @@
     <junit.version>5.14.4</junit.version>
     <rest-assured.version>6.0.1</rest-assured.version>
     <gson.version>2.13.2</gson.version>
+    <commons-csv.version>1.12.0</commons-csv.version>
     <cucumber.version>7.29.0</cucumber.version>
     <!-- Appium Java Client surumu; Appium Server surumu ile ayni sey degildir. -->
     <appium.java-client.version>10.1.1</appium.java-client.version>
@@ -36,8 +37,9 @@
     <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
     <allure.report.directory>${project.build.directory}/allure-report</allure.report.directory>
 
-    <!-- Hangi testlerin calisacagini profile belirler. Profilsiz calistirmada sadece api. -->
-    <test.tags>api</test.tags>
+    <!-- Hangi testlerin calisacagini profile belirler. "unit" her profilde kosar:
+         framework birim testleri (frameworktest paketi) ortamdan bagimsizdir. -->
+    <test.tags>api | unit</test.tags>
 
     <!-- CucumberRunnerTest adi *Test.java desenine uydugu icin varsayilan kosumlarda
          acikca haric tutulur; yalnizca -Pcucumber onu calistirir. -->
@@ -109,6 +111,15 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>${gson.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- CSV test verisi icin. Elle split(",") parser'i quoted virgul, satir sonu ve
+         escape edilmis tirnak durumlarinda sessizce yanlis okur. -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>${commons-csv.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -287,14 +298,14 @@
     <profile>
       <id>api</id>
       <properties>
-        <test.tags>api</test.tags>
+        <test.tags>api | unit</test.tags>
       </properties>
     </profile>
 
     <profile>
       <id>mobile</id>
       <properties>
-        <test.tags>mobile</test.tags>
+        <test.tags>mobile | unit</test.tags>
       </properties>
     </profile>
 

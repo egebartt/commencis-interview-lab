@@ -1,6 +1,7 @@
 package com.commencis.interview.api;
 
-import com.commencis.interview.util.ConfigReader;
+import com.commencis.interview.core.config.Config;
+import com.commencis.interview.core.security.SensitiveHeaders;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.HeaderConfig;
 import io.restassured.config.HttpClientConfig;
@@ -11,34 +12,20 @@ import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 
-import java.util.Set;
-
 /**
  * Ortak RequestSpecification uretimi.
  *
- * <p>JUnit testleri (BaseApiTest) ve Cucumber step definition'lari ayni Rest Assured
- * yapilandirmasini kullansin, ayarlar iki yerde kopyalanmasin diye tek noktada tutulur.
+ * <p>Cucumber adimlari ve JUnit live-coding testleri ayni Rest Assured yapilandirmasini
+ * kullansin, ayarlar iki yerde kopyalanmasin diye tek noktada tutulur.
  */
 public final class RequestSpecFactory {
-
-    private static final Set<String> SECRET_HEADERS = Set.of(
-            "Authorization",
-            "Cookie",
-            "Proxy-Authorization",
-            "Api-Key",
-            "X-Api-Key",
-            "Client-Key",
-            "X-Client-Key",
-            "Secret-Key",
-            "Client-Secret",
-            "X-Client-Secret");
 
     private RequestSpecFactory() {
     }
 
     /** Her cagrida temiz bir spec uretir; test/senaryo arasinda durum tasinmaz. */
     public static RequestSpecification create() {
-        int timeoutMillis = ConfigReader.getInt("api.timeout.seconds", 20) * 1000;
+        int timeoutMillis = Config.getInt("api.timeout.seconds", 20) * 1000;
 
         RestAssuredConfig config = RestAssuredConfig.newConfig()
                 // Global spec ile istek bazli header birlikte verilirse son deger kazanir.
@@ -51,10 +38,13 @@ public final class RequestSpecFactory {
                         "Secret-Key",
                         "Client-Secret",
                         "X-Client-Secret"))
-                // Sadece assertion basarisiz olursa request/response yazilir; secret header'lar maskelenir.
+                // Dogrulama hatasinda otomatik log KAPALI: Rest Assured o cikti icin gövdeyi ham
+                // basar (yalnizca header'lar blacklist'e tabidir) ve stdout uzerinden
+                // failsafe-reports XML'ine duser. Hata kaniti olarak maskelenmis Allure ekleri
+                // kullanilir. Blacklist burada kalir: api.log.request=true acildiginda
+                // builder.log(...) bu ayardan okur.
                 .logConfig(LogConfig.logConfig()
-                        .enableLoggingOfRequestAndResponseIfValidationFails(LogDetail.ALL)
-                        .blacklistHeaders(SECRET_HEADERS))
+                        .blacklistHeaders(SensitiveHeaders.canonicalNames()))
                 .httpClient(HttpClientConfig.httpClientConfig()
                         .setParam("http.connection.timeout", timeoutMillis)
                         .setParam("http.socket.timeout", timeoutMillis));
@@ -66,7 +56,7 @@ public final class RequestSpecFactory {
 
         // Opsiyoneldir: doluysa relative path'ler ("/posts/1") bu adrese gore cozulur, bos ise
         // testte full URL verilir. Zorunlu ayar degildir; ApiClient iki kullanimi da destekler.
-        String baseUrl = ConfigReader.get("api.base.url");
+        String baseUrl = Config.get("api.base.url");
         if (!baseUrl.isEmpty()) {
             builder.setBaseUri(baseUrl.replaceAll("/+$", ""));
         }
@@ -75,17 +65,21 @@ public final class RequestSpecFactory {
         // constructor'dan alir; bu metot onu yukaridaki LogConfig'ten okuyup verir, yani secret
         // header'lar burada da maskelenir. Filtre elle kurulursa maskeleme calismaz.
         // setConfig'ten sonra cagrilmalidir.
-        if (ConfigReader.getBoolean("api.log.request", false)) {
+        if (Config.getBoolean("api.log.request", false)) {
             builder.log(LogDetail.ALL);
         }
         // Yanit yalnizca BODY olarak yazilir: ResponseLoggingFilter blacklist parametresi almadigi
         // icin LogDetail.ALL yapilirsa response header'lari maskelenmeden basilir.
-        if (ConfigReader.getBoolean("api.log.response", false)) {
+        if (Config.getBoolean("api.log.response", false)) {
             builder.addFilter(new ResponseLoggingFilter(LogDetail.BODY));
         }
 
+        // Rapor kaniti tek ortak noktada uretilir: Cucumber adimlari ve JUnit live testleri
+        // ayni ek'i alir, istek yeniden gonderilmez.
+        builder.addFilter(new ApiReportingFilter());
+
         // Token yalnizca verilmisse eklenir; repository'de bos durur.
-        String token = ConfigReader.get("api.auth.token");
+        String token = Config.get("api.auth.token");
         if (!token.isEmpty()) {
             builder.addHeader("Authorization", "Bearer " + token);
         }

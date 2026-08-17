@@ -1,7 +1,7 @@
 package com.commencis.interview.runner;
 
 import org.junit.platform.suite.api.IncludeEngines;
-import org.junit.platform.suite.api.SelectClasspathResource;
+import org.junit.platform.suite.api.SelectPackages;
 import org.junit.platform.suite.api.Suite;
 
 /**
@@ -14,7 +14,7 @@ import org.junit.platform.suite.api.Suite;
  * .\mvnw.cmd clean verify -Pcucumber "-Dcucumber.filter.tags=@mobile and @smoke"
  * </pre>
  *
- * <p>{@code @SelectClasspathResource} alt klasorleri de kapsar; features/api ve features/mobile
+ * <p>{@code @SelectPackages} alt klasorleri de kapsar; features/api ve features/mobile
  * icin ayri secici gerekmez.
  *
  * <p>Bu class {@code *Test.java} desenine uydugu icin varsayilan Failsafe kosumlarindan
@@ -22,6 +22,6 @@ import org.junit.platform.suite.api.Suite;
  */
 @Suite
 @IncludeEngines("cucumber")
-@SelectClasspathResource("features")
+@SelectPackages("features")
 public class CucumberRunnerTest {
 }

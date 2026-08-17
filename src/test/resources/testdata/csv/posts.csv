@@ -1,0 +1,4 @@
+case,userId,title,body
+happy_path,7,Commencis interview lab,"Body with a comma, quoted so it stays one column"
+long_title,7,"Title that contains ""escaped quotes"" inside",Short body
+missing_title,7,,Body without a title

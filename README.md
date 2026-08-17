@@ -1,19 +1,26 @@
 # Commencis Interview Lab
 
-Tek modüllü Java 21 / Maven test projesi. **API testleri Rest Assured**, **mobile testleri Appium** ile
-yazılır, sonuçlar **Allure HTML** raporuna çıkar. Spring/Lombok yok.
+Tek modüllü Java 21 / Maven test projesi. **Cucumber + Appium + Rest Assured** mimarisi; sonuçlar
+**Allure HTML** raporuna çıkar. Spring/Lombok yok.
 
-Testler **JUnit 5 `@Test`** ile yazılır. **Cucumber** ikinci bir giriş noktası olarak hazırdır ve aynı
-Page aksiyonlarını çağırır — ayrı bir otomasyon katmanı değildir (bkz. §9).
+Test senaryolarının kalıcı yeri **`.feature` dosyalarıdır**. JUnit `@Test` yalnızca `live/` altında,
+canlı kodlama sırasında hızlı case yazmak için bir adapter olarak durur; ikisi de aynı altyapıyı
+kullanır.
+
+```
+live/LiveCodingTest  ─┐
+                      ├─  Config · ApiClient · DriverManager · ElementActions · LocatorRegistry
+Cucumber steps       ─┘
+```
 
 | | |
 | --- | --- |
 | Java | 21 |
-| Build | Maven 3.9.16 (wrapper ile gelir, ayrıca kurmaya gerek yok) |
+| Build | Maven 3.9.16 (wrapper ile gelir) |
 | API | Rest Assured 6.0.1 |
 | Mobile | Appium Java Client 10.1.1 + Selenium 4.42.0 |
-| Test | JUnit 5 + Maven Failsafe |
 | BDD | Cucumber 7.29.0 (JUnit Platform Engine + PicoContainer) |
+| CSV | Apache Commons CSV 1.12.0 |
 | Rapor | Allure → `target/allure-report/index.html` |
 
 Maven **dependency olmayan**, makineye ayrıca kurulması gereken araçlar:
@@ -25,10 +32,9 @@ Maven **dependency olmayan**, makineye ayrıca kurulması gereken araçlar:
 | Node.js | >= 20.19 |
 | npm | >= 10 |
 
-> **Sürüm karışıklığına dikkat:** `pom.xml` içindeki `appium.java-client.version` (10.1.1) **Appium
-> Java Client** sürümüdür — yani testlerin kullandığı Java kütüphanesi. **Appium Server** (3.4.2) ve
-> **UiAutomator2 Driver** (7.5.2) ayrı ürünlerdir, Maven dependency değildir ve npm ile makineye
-> kurulur. Bu üçü birbirinden bağımsız versiyonlanır.
+> `pom.xml` içindeki `appium.java-client.version` (10.1.1) **Appium Java Client** sürümüdür — yani
+> testlerin kullandığı Java kütüphanesi. **Appium Server** (3.4.2) ve **UiAutomator2 Driver** (7.5.2)
+> ayrı ürünlerdir, npm ile kurulur ve bağımsız versiyonlanır.
 
 ---
 
@@ -36,88 +42,112 @@ Maven **dependency olmayan**, makineye ayrıca kurulması gereken araçlar:
 
 ```
 src/test/java/com/commencis/interview/
-  base/
-    BaseMobileTest.java     driver'ı açar/kapatır (@BeforeEach / @AfterEach)
-    BaseApiTest.java        her test için temiz RequestSpecification üretir
-  platform/
-    MobilePlatform.java     ANDROID / IOS — tek kaynak: mobile.platform
-  driver/
-    MobileDriver.java       capability'leri kurar, AndroidDriver veya IOSDriver döner
-  locator/
-    ApiDemosLocators.java   PAGE_NAME + public static final By locator'lar
-    PlatformBy.java         aynı elemanın Android/iOS locator'ı farklıysa seçer
-  page/
-    BasePage.java           ortak bekleme / tıklama / kaydırma / liste / context
-    ApiDemosPage.java       sadece ekran aksiyonları, locator tutmaz
+  core/
+    config/
+      Config.java              katmanlı ayar okuma (-D > env > device > environment > default)
+      MobilePlatform.java      ANDROID / IOS — tek kaynak: mobile.platform
+    context/
+      ScenarioContext.java     senaryo boyunca taşınan değerler (${ctx:...})
+      ApiContext.java          kurulan istek + son yanıt (yalnızca durum tutar)
+    data/
+      JsonData.java            classpath JSON dosyasını okur
+      CsvData.java             CSV okur, satır seçer, düz satırı JSON gövdeye çevirir
+      CsvOutput.java           yanıtı CSV'ye yazar (target/output)
+      Placeholders.java        ${ctx:key} ve ${config:key} çözümü
+    report/
+      AllureAttachments.java   request/response/screenshot ekleri (maskeli)
+      AllureEnvironment.java   rapordaki Environment paneli
+    security/
+      SensitiveHeaders.java    gizli header listesi — log ve rapor aynı kaynağı kullanır
   api/
-    RequestSpecFactory.java ortak Rest Assured yapılandırması
-    ApiClient.java          tek dinamik send() + get/post/put/patch/delete (assertion yok)
-    ApiRequestException.java geçerli Response alınamadığında hata tipini söyler
-    PostApi.java            /posts endpoint çağrıları (assertion yok)
-  test/                     JUnit @Test giriş noktaları
-    api/PostApiTest.java
-    api/ManualUrlApiTest.java
-    api/ApiErrorReportingTest.java
-    mobile/ApiDemosTest.java
-  runner/
-    CucumberRunnerTest.java feature'ları çalıştıran tek runner
+    ApiClient.java             tek send() + get/post/put/patch/delete, query/path param, assertion yok
+    RequestSpecFactory.java    ortak Rest Assured yapılandırması
+    ApiRequestException.java   geçerli Response alınamadığında hata tipini söyler
+  mobile/
+    driver/
+      DriverManager.java       senaryo/test ömürlü driver sahibi (strict + lazy mod)
+      MobileDriver.java        capability'leri kurar, AndroidDriver veya IOSDriver döner
+    element/
+      ElementActions.java      tüm düşük seviye aksiyonlar (By ile ve sayfa adı + element adı ile)
+    locator/
+      Locators.java            işaretleyici arayüz
+      LocatorRegistry.java     "Api Demos Page" + "VIEWS_MENU" → By
+      DynamicLocators.java     metinden üretilen locator'lar
+      PlatformBy.java          aynı elemanın Android/iOS locator'ı farklıysa seçer
+      ApiDemosLocators.java    PAGE_NAME + public static final By
+      ControlsLocators.java
+    page/
+      BasePage.java            ElementActions'ı taşır; tek base page
+      ApiDemosPage.java        iş akışı metotları, locator tutmaz
+      ControlsPage.java
   hooks/
-    MobileHooks.java        @mobile senaryolarında driver aç/kapat + fail screenshot
-  context/
-    MobileTestContext.java  senaryo ömürlü driver sahibi (Cucumber)
-    ApiTestContext.java     senaryo ömürlü PostApi + response (Cucumber)
-  stepdefinition/           Cucumber annotation yüzü; Page ve PostApi'ye delege eder
-    api/PostApiStepDefinitions.java
-    mobile/ApiDemosStepDefinitions.java
-  util/
-    ConfigReader.java       config.properties okur
-    JsonReader.java         JSON dosyasını String olarak okur
+    MobileHooks.java           @mobile driver aç/kapat + Bar2 + Allure screenshot
+    ReportHooks.java           koşum metadata'sı
+    Bar2CucumberHooks.java     Bar2 Report plugin tarafından üretilir — elle değiştirilmez
+    Bar2ReportScreenshot.java
+  stepdefinition/
+    common/ElementStepDefinitions.java    16 genel mobil adım (sayfa adı + element adı)
+    api/ApiRequestStepDefinitions.java    url, header, query, path, body, gönderim
+    api/ApiResponseStepDefinitions.java   status, alan, süre, context'e kaydet, CSV'ye yaz
+    mobile/ApiDemosStepDefinitions.java   iş dili adımları
+    mobile/ControlsStepDefinitions.java
+  live/
+    BaseTest.java              tek JUnit base — driver lazy açılır
+    LiveCodingTest.java        mülakat çalışma alanı (@Tag("api") / @Tag("mobile"))
+  frameworktest/               framework'ün kendi birim testleri (@Tag("unit"))
+    ConfigTest · CsvDataTest · CsvOutputTest · LocatorRegistryTest
+    PlaceholdersTest · SensitiveHeadersTest · ApiClientParamsTest · ApiErrorReportingTest
+  runner/
+    CucumberRunnerTest.java    feature'ları çalıştıran tek runner (@Suite, içinde @Test yok)
 
 src/test/resources/
-  config.properties
-  junit-platform.properties   Cucumber glue / tag / plugin ayarları
+  config/
+    config.properties          ortam/cihaz bağımsız varsayılanlar
+    env/{test,prep}.properties         -Denvironment=<ad>
+    device/{android-emulator,android-real,ios-simulator}.properties   -Ddevice=<ad>
   features/
-    api/post_api.feature
-    mobile/api_demos.feature
-  testdata/create-post.json
+    api/posts.feature
+    mobile/api_demos.feature · mobile/controls.feature
+  testdata/
+    json/create-post.json
+    csv/posts.csv
+  junit-platform.properties    Cucumber glue / tag / plugin ayarları
+  allure.properties
 ```
 
-**Katman sırası:**
+### Katman sırası
 
 ```
-.feature  →  stepdefinition/  →  page/ veya api/  →  driver / HTTP
-@Test     →                      page/ veya api/  →  driver / HTTP
+.feature  →  stepdefinition/  →  page/ (iş akışı)  →  ElementActions  →  driver
+.feature  →  stepdefinition/common (genel adım)    →  ElementActions  →  driver
+.feature  →  stepdefinition/api   →  ApiContext    →  ApiClient       →  HTTP
+@Test     →  live/BaseTest        →  ElementActions / ApiClient
 ```
 
-Senaryo birden fazla ekranı ya da birden fazla servisi zincirleyen bir iş akışına dönüştüğünde
-araya **annotation'sız** bir `step/` katmanı eklenir (`stepdefinition → step → page`). Şu an böyle
-bir akış olmadığı için o paket oluşturulmadı.
+### Neden `BaseTest` sadece JUnit'te var
 
-**`base/` ve `context/` neden ayrı:** ikisi de driver yaşam döngüsü yönetir ama farklı runner'lar
-için. `BaseMobileTest` JUnit tarafında driver'ı kendi instance alanında tutar; `MobileTestContext`
-Cucumber tarafında PicoContainer'ın senaryo başına ürettiği nesnedir. **Aynı driver örneğini
-paylaşmazlar** ve bir koşumda yalnızca biri devrededir.
+Cucumber'da yaşam döngüsünün karşılığı `@Before/@After` hook'ları, durumun karşılığı da
+senaryo ömürlü context nesneleridir; kalıtım yerine PicoContainer injection kullanılır. `BaseTest`
+sadece `live/` altındaki JUnit adapter'ı içindir ve driver'ı **lazy** açar — bu yüzden aynı taban
+hem API hem mobil hızlı testlere hizmet eder, API testi Appium aramaz.
 
-**Locator ve aksiyon ayrımı:** `ApiDemosLocators` sadece locator'ları ve ekran adını (`PAGE_NAME`)
-tutar. `ApiDemosPage` sadece aksiyonları tutar, hiç locator tanımlamaz. Böylece bir locator
-değiştiğinde aksiyon koduna, bir akış değiştiğinde locator dosyasına dokunulmaz.
+### `DriverManager`'ın iki modu
 
-**JUnit ve Cucumber ortak nokta:** ikisi de aynı `ApiDemosPage` / `PostApi` metotlarını çağırır.
-Step definition'lar `driver.findElement` veya bekleme mantığı içermez.
+| Mod | Kim kullanır | Davranış |
+| --- | --- | --- |
+| strict (public no-arg constructor) | Cucumber / PicoContainer | Driver yalnızca `MobileHooks` içindeki `@Before("@mobile")` ile açılır. Tag'i eksik bir senaryo mobil adım çağırırsa sessizce cihaz açmak yerine açık hata verir. |
+| lazy (`DriverManager.lazy()`) | `live/BaseTest` | İlk UI erişiminde driver açılır. |
 
-**BaseMobileTest ve MobileDriver ayrımı:** `BaseMobileTest` *ne zaman* driver açılıp kapanacağını
-bilir (test yaşam döngüsü). `MobileDriver` *nasıl* açılacağını bilir (capability'ler). Böylece
-capability değiştirmek için teste, test akışını değiştirmek için driver koduna dokunmazsın.
+### Locator ve aksiyon ayrımı
 
-**RequestSpecFactory, BaseApiTest ve PostApi ayrımı:** `RequestSpecFactory` bağlantı ayarını
-(base url, timeout, header, secret maskeleme) kurar; `BaseApiTest` (JUnit) ve `ApiTestContext`
-(Cucumber) aynı factory'yi çağırır, Rest Assured yapılandırması iki yerde kopyalanmaz. `PostApi`
-sadece istek atar ve `Response` döner — **assertion yapmaz**. Doğrulama testte/adımda kalır; bu
-sayede aynı `PostApi` hem 200 hem 404 senaryosuna hizmet eder.
+`*Locators` sınıfları yalnızca `PAGE_NAME` ve `public static final By` alanları tutar; aksiyon
+içermez. `ElementActions` yalnızca aksiyon tutar; locator tanımlamaz. `LocatorRegistry` ikisini
+isimle birleştirir.
 
-**ApiClient ve PostApi ayrımı:** `ApiClient` *nasıl* istek atılacağını bilir (metot, URL çözümü,
-header, body, hata sınıflandırma). `PostApi` *hangi* endpoint'in çağrıldığını bilir. Tek bir
-`send(Method, url, body, headers)` metodu vardır; `get/post/put/patch/delete` ona delege eder.
+Kayıt **açık listedir** (`LocatorRegistry.PAGES`), dosya sistemi taranmaz — koşum jar/CI ortamında
+da aynı davranır. Liste derleme zamanı sabitleriyle kurulduğu için bir sayfanın locator alanları
+**yalnızca o sayfa ilk kez sorgulandığında** okunur; bozuk tek bir locator sınıfı tüm koşumu
+düşürmez ve hata mesajı hangi sayfa olduğunu söyler.
 
 ---
 
@@ -125,10 +155,6 @@ header, body, hata sınıflandırma). `PostApi` *hangi* endpoint'in çağrıldı
 
 ```powershell
 $env:JAVA_HOME = "C:\Users\bartu\.jdks\ms-21.0.12"
-```
-
-```powershell
-cd C:\Users\bartu\IdeaProjects\commencis-interview-lab
 ```
 
 Makinede ne var ne yok görmek için (hiçbir şey kurmaz, sadece rapor eder):
@@ -147,18 +173,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\preflight.ps1
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"; $env:PATH = "$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\emulator;$env:PATH"
 ```
 
-Kalıcı yapmak için (sonra **yeni** terminal aç):
-
-```powershell
-[Environment]::SetEnvironmentVariable("ANDROID_HOME", "$env:LOCALAPPDATA\Android\Sdk", "User")
-```
-
 ### Appium
 
-PowerShell'de `npm` ve `appium` yerine **`npm.cmd`** ve **`appium.cmd`** kullan — `npm.ps1` ve
-`appium.ps1` shim'leri execution policy nedeniyle bloklanabilir.
-
-Sürümler yukarıdaki tabloyla aynı olsun diye komutlara açıkça yazılır:
+PowerShell'de `npm` ve `appium` yerine **`npm.cmd`** ve **`appium.cmd`** kullan — `.ps1` shim'leri
+execution policy nedeniyle bloklanabilir.
 
 ```powershell
 npm.cmd install -g appium@3.4.2
@@ -168,19 +186,11 @@ npm.cmd install -g appium@3.4.2
 appium.cmd driver install uiautomator2@7.5.2
 ```
 
-```powershell
-appium.cmd driver doctor uiautomator2
-```
-
-### Appium Server'ı başlat
-
 Server bu proje tarafından başlatılmaz; ayrı bir terminalde açık kalmalı:
 
 ```powershell
 appium.cmd
 ```
-
-Kontrol:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:4723/status
@@ -193,225 +203,242 @@ emulator -list-avds
 ```
 
 ```powershell
-emulator -avd Pixel_7_API_34
-```
-
-**udid'i bul** — `adb devices -l` çıktısındaki ilk sütun udid'dir (örn. `emulator-5554`):
-
-```powershell
 adb devices -l
 ```
 
-### Gerçek Redmi cihaz hazırlığı
+Çıktıdaki ilk sütun `android.udid` değeridir (örn. `emulator-5554`).
 
-1. **Ayarlar → Telefon hakkında** → **MIUI sürümü**ne 7 kez dokun (Geliştirici seçenekleri açılır).
-2. **Ayarlar → Ek ayarlar → Geliştirici seçenekleri**:
-   - **USB hata ayıklama** açık
-   - **USB ile yükleme** açık
-   - **USB hata ayıklama (Güvenlik ayarları)** açık — Xiaomi'de UiAutomator2'nin tuşa basabilmesi
-     için gerekli, Mi hesabı ister
-   - **USB yapılandırması**: *Dosya aktarımı (MTP)*
-3. Kabloyu tak, telefondaki **"USB hata ayıklamaya izin ver?"** uyarısını onayla ve
-   *Bu bilgisayardan her zaman izin ver* işaretle. Onaylamazsan `adb` cihazı `unauthorized` görür.
-
-| `adb devices` çıktısı | Yapılacak |
-| --- | --- |
-| `unauthorized` | Telefondaki onay penceresini kabul et. Çıkmıyorsa: `adb kill-server`, kabloyu çıkar-tak. |
-| `offline` | Kabloyu/portu değiştir. |
-| boş liste | OEM USB sürücüsünü kur, USB modunu MTP yap. |
+Gerçek Redmi/Xiaomi cihaz için: **Ayarlar → Telefon hakkında → MIUI sürümü**ne 7 kez dokun, sonra
+**Geliştirici seçenekleri**nde *USB hata ayıklama*, *USB ile yükleme* ve *USB hata ayıklama (Güvenlik
+ayarları)* açık olmalı; USB modu *MTP*. Telefondaki "USB hata ayıklamaya izin ver?" uyarısını
+onaylamazsan `adb` cihazı `unauthorized` görür.
 
 ### ApiDemos APK
 
-APK repository'ye konmaz. Resmî sürüm sayfasından indir:
-<https://github.com/appium/android-apidemos/releases>
+APK repository'ye konmaz: <https://github.com/appium/android-apidemos/releases>
 
-`android.app.path` boş bırakılırsa cihazda **kurulu** uygulama `android.app.package` +
-`android.app.activity` ile açılır. APK'dan kurmak istersen `android.app.path` doldur.
+`android.app.path` doluysa APK kurulur; boş bırakılırsa cihazdaki uygulama `android.app.package` +
+`android.app.activity` ile açılır.
 
 ---
 
-## 3. Testleri çalıştırma
+## 3. Koşum
 
-**Maven profile hangi test grubunun çalışacağını belirler. config.properties ise testin hangi
-ortam/cihaz/endpoint üzerinde çalışacağını belirler.** İkisi farklı iştir.
+**Profil hangi test grubunun çalışacağını belirler; `-Denvironment` / `-Ddevice` ise testin hangi
+ortam ve cihaz üzerinde çalışacağını belirler.** İkisi farklı iştir.
 
-Dört koşum biçimi vardır:
-
-| Komut | Ne çalışır | Cihaz gerekir mi |
+| Komut | Ne çalışır | Cihaz |
 | --- | --- | --- |
-| `.\mvnw.cmd clean verify` | JUnit API testleri (profilsiz = `-Papi` ile aynı) | Hayır |
-| `.\mvnw.cmd clean verify -Papi` | JUnit API testleri (`@Tag("api")`) | Hayır |
-| `.\mvnw.cmd clean verify -Pmobile` | JUnit mobile testleri (`@Tag("mobile")`) | **Evet** |
-| `.\mvnw.cmd clean verify -Pcucumber` | Sadece `CucumberRunnerTest` → varsayılan `@api and @smoke` | Hayır |
+| `.\mvnw.cmd clean verify -Pcucumber` | Cucumber, varsayılan `@api and @smoke` | Hayır |
+| `.\mvnw.cmd clean verify -Pcucumber "-Dcucumber.filter.tags=@mobile and @smoke"` | Cucumber mobil senaryolar | **Evet** |
+| `.\mvnw.cmd clean verify -Papi` | `@Tag("api")` + `@Tag("unit")` — live adapter + framework testleri | Hayır |
+| `.\mvnw.cmd clean verify -Pmobile` | `@Tag("mobile")` + `@Tag("unit")` | **Evet** |
 
-`CucumberRunnerTest` adı `**/*Test.java` desenine uyduğu için `-Papi`, `-Pmobile` ve profilsiz
-koşumlarda `pom.xml` içinde **açıkça hariç tutulur**. Yani Cucumber yalnızca `-Pcucumber` ile çalışır.
+`CucumberRunnerTest` adı `**/*Test.java` desenine uyduğu için `-Papi` / `-Pmobile` koşumlarında
+`pom.xml` içinde **açıkça hariç tutulur**; Cucumber yalnızca `-Pcucumber` ile çalışır.
 
-API testleri:
+Ortam ve cihaz seçimi:
 
 ```powershell
-.\mvnw.cmd clean verify -Papi
+.\mvnw.cmd clean verify -Pcucumber -Denvironment=prep -Ddevice=android-real "-Dcucumber.filter.tags=@mobile and @smoke"
 ```
 
-Mobile testleri:
+Canlı kodlama sırasında tek sınıf / tek metot (PowerShell'de **tırnak içine al**):
 
 ```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554
-```
-
-APK'dan kurarak:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554 -Dandroid.app.path=C:\apps\ApiDemos-debug.apk
-```
-
-Tek test sınıfı veya tek metot (PowerShell'de **tırnak içine al**, yoksa Maven argümanı bölüyor):
-
-```powershell
-.\mvnw.cmd clean verify -Papi "-Dit.test=PostApiTest"
+.\mvnw.cmd clean verify -Pmobile "-Dit.test=LiveCodingTest"
 ```
 
 ```powershell
-.\mvnw.cmd clean verify -Papi "-Dit.test=PostApiTest#getPostReturnsRecord"
+.\mvnw.cmd clean verify -Papi "-Dit.test=LiveCodingTest#getsExistingPost"
 ```
 
-Profile verilmezse sadece API testleri çalışır — çıplak `verify` komutu asla cihaz/Appium aramaz.
-Yanlış bir `-Dit.test` değeri veya sıfır test seçimi build'i **kırar** (`failIfNoSpecifiedTests`).
-
----
-
-## 3.1 Cucumber koşumu
-
-Varsayılan `-Pcucumber` koşumu **cihaz gerektirmez**: `junit-platform.properties` içindeki
-`cucumber.filter.tags=@api and @smoke` yalnızca API senaryolarını seçer, mobile senaryo skip edilir
-ve driver hiç açılmaz.
-
-```powershell
-.\mvnw.cmd clean verify -Pcucumber
-```
-
-Mobile senaryolar (Appium + bağlı cihaz gerekir):
-
-```powershell
-.\mvnw.cmd clean verify -Pcucumber "-Dcucumber.filter.tags=@mobile and @smoke" -Dandroid.udid=emulator-5554
-```
-
-Tag ifadesi serbesttir; `-D` her zaman properties dosyasını ezer:
-
-```powershell
-.\mvnw.cmd clean verify -Pcucumber "-Dcucumber.filter.tags=@smoke and not @wip"
-```
+> Failsafe `-Dtest` değil **`-Dit.test`** ister. Tek test denemek için IntelliJ'in çalıştır düğmesi
+> daha hızlıdır; terminal koşumu asıl olarak rapor üretmek için kullanılır.
 
 Adımların glue ile eşleştiğini cihaz açmadan kontrol etmek için dry-run:
 
 ```powershell
-.\mvnw.cmd clean verify -Pcucumber "-Dcucumber.execution.dry-run=true" "-Dcucumber.filter.tags=@mobile and @smoke"
+.\mvnw.cmd clean verify -Pcucumber "-Dcucumber.filter.tags=@mobile" "-Dcucumber.execution.dry-run=true"
 ```
 
-Dry-run adımları çalıştırmaz ve hook'ları tetiklemez — driver açılmaz. Bu yüzden dry-run yalnızca
-**glue eşleşmesini** kanıtlar; PicoContainer injection'ını kanıtlamaz. Onun için gerçek koşum gerekir.
-
-### Glue yapılandırması
-
-```properties
-cucumber.glue=com.commencis.interview.hooks,com.commencis.interview.stepdefinition
-```
-
-Glue yalnızca **Cucumber annotation'ı taşıyan** paketleri kapsar. `stepdefinition` alt paketleri
-(`api`, `mobile`) otomatik dahildir. `context` paketi **glue'da değildir**: `MobileTestContext` ve
-`ApiTestContext`, PicoContainer tarafından step definition ve hook constructor'larının bağımlılığı
-olarak çözülür. Yeni bir step definition paketi eklersen bu satıra eklemeyi unutma — aksi halde
-adımlar sessizce **undefined** olur.
+Dry-run adımları çalıştırmaz ve hook'ları tetiklemez — driver açılmaz. Bu yüzden **yalnızca glue
+eşleşmesini kanıtlar, E2E kanıtı değildir.**
 
 ### Bilinen sınırlama: yanlış tag build'i kırmaz
 
-`cucumber.filter.tags` değeri hiçbir senaryoyla eşleşmezse Cucumber senaryoları **skip** eder,
-"sıfır test" üretmez. Failsafe test bulduğu için `failIfNoTests` devreye girmez ve **build yeşil
-kalır**. Örnek: `-Dcucumber.filter.tags=@yokboylebirtag` → `Tests run: 3, Skipped: 3`, BUILD SUCCESS.
-
-Bunun için özel bir guard eklenmedi. Tag'i değiştirdiğinde koşum çıktısındaki **Skipped sayısına
-bak**; hepsi skip ise tag ifadesi yanlıştır.
-
-### StepDefinition'ı tek başına çalıştıramazsın
-
-`@Given` / `@When` / `@Then` işaretli metotlar test değildir; IDE onları tek başına çalıştıramaz
-(driver açılmaz, hook'lar tetiklenmez). Bir senaryoyu tek tek denemek için `.feature` dosyasındaki
-senaryonun yanındaki çalıştır düğmesini (IntelliJ Cucumber for Java plugin) veya yukarıdaki tag
-override komutunu kullan.
+`cucumber.filter.tags` hiçbir senaryoyla eşleşmezse Cucumber senaryoları **skip** eder, "sıfır test"
+üretmez; Failsafe test bulduğu için build yeşil kalır. Tag'i değiştirdiğinde çıktıdaki **Skipped
+sayısına bak**.
 
 ---
 
-## 4. Ayarlar (config.properties)
+## 4. Ayarlar
 
-Öncelik sırası: `-Dkey=deger` > environment variable > `config.properties`.
+Çözümleme sırası (üstteki kazanır):
 
 ```
-android.udid=            ->  -Dandroid.udid=emulator-5554   veya   ANDROID_UDID=emulator-5554
+1) -Dapi.base.url=...                       komut satırı
+2) API_BASE_URL                             ortam değişkeni (nokta → alt çizgi, büyük harf)
+3) config/device/<device>.properties         -Ddevice=android-real
+4) config/env/<environment>.properties       -Denvironment=prep
+5) config/config.properties                  ortak varsayılanlar
 ```
 
-Önemli anahtarlar:
+`environment` ve `device` yalnızca ilk üç kaynaktan çözülür — aksi halde hangi dosyanın yükleneceği
+kendi içeriğine bağlı olurdu. Değer doğrudan bir kaynak yoluna girdiği için `[A-Za-z0-9_-]+` ile
+doğrulanır: `../../` gibi bir değer reddedilir.
 
-| Anahtar | Açıklama |
+Yeni ortam eklemek = `config/env/<ad>.properties` dosyası açmak. Kod değişikliği gerekmez.
+
+| Anahtar | Nerede | Açıklama |
+| --- | --- | --- |
+| `environment` / `device` | config.properties | Hangi katman dosyalarının yükleneceği |
+| `mobile.platform` | config.properties | Yalnızca `android` veya `ios`; cihaz taranmaz |
+| `appium.server.url` | config.properties | Dışarıdan başlatılan server adresi |
+| `mobile.explicit.wait.seconds` | config.properties | Tüm explicit wait'lerin üst sınırı |
+| `api.base.url` | env | **Opsiyonel:** doluysa relative path, boşsa senaryoda full URL |
+| `api.auth.token` | env | **Boş bırakılır**, `-Dapi.auth.token=...` veya `API_AUTH_TOKEN` ile geçilir |
+| `api.log.request` / `api.log.response` | config.properties | Rest Assured'ın konsol log'u. **Varsayılan `false`** — açılırsa gövde **maskelenmeden** stdout'a ve `failsafe-reports` XML'ine düşer. Rapor için gerekmez; Allure eki zaten maskelenmiş gövdeyi taşır |
+| `android.udid` / `android.app.path` | device | `adb devices -l` çıktısı / kurulacak APK |
+| `ios.udid` / `ios.bundle.id` | device | `xcrun xctrace list devices` çıktısı |
+| `csv.output.dir` | -D | CSV çıktı dizini (varsayılan `target/output`) |
+
+Gizli değerler repository'ye yazılmaz ve tek bir isim listesinden maskelenir (`SensitiveHeaders`).
+Karşılaştırma normalize edilir — `access_token`, `accessToken` ve `Access-Token` aynı sayılır.
+Maskeleme **yalnızca rapor kopyasında** yapılır; gönderilen istek ve alınan `Response` değişmez.
+
+| Nerede | Ne maskelenir |
 | --- | --- |
-| `mobile.platform` | Yalnızca `android` veya `ios`. `auto` **desteklenmez** — cihaz taranmaz |
-| `appium.server.url` | Dışarıdan başlatılan server adresi (uzak bir makine de olabilir) |
-| `mobile.explicit.wait.seconds` | Tüm explicit wait'lerin üst sınırı |
-| `android.udid` | `adb devices -l` çıktısından |
-| `android.app.path` | Doluysa APK kurulur, boşsa package/activity kullanılır |
-| `android.no.reset` | Varsayılan `false` |
-| `ios.udid` | `xcrun xctrace list devices` çıktısından |
-| `ios.app.path` | Doluysa uygulama kurulur, boşsa `ios.bundle.id` zorunlu |
-| `ios.bundle.id` | Cihazdaki uygulamayı açmak için |
-| `api.base.url` | Test edilen API. **Opsiyonel:** doluysa relative path (`/posts/1`), boşsa testte full URL |
-| `api.auth.token` | **Boş bırakılır**, gerekirse `-Dapi.auth.token=...` |
-| `api.log.request` | Varsayılan `false`. Gönderilen isteği yazar (secret header'lar maskeli) |
-| `api.log.response` | Yanıt gövdesini yazar |
+| Allure request eki | Gizli header değerleri, URL'deki kullanıcı bilgisi, gizli query parametrelerinin değerleri, JSON gövdedeki gizli alanlar (iç içe nesne ve dizi dahil) |
+| Allure response eki | JSON gövdedeki gizli alanlar |
+| Environment paneli | `api.base.url` ve `appium.server.url` içindeki kullanıcı bilgisi |
+| `byte[]` ve `InputStream` gövdeler | İçerik rapora **hiç yazılmaz**, yerine boyut/tip bilgisi konur. `InputStream` rapor için okunmaz — okumak gönderilecek veriyi tüketirdi |
+| Assertion hata mesajları | Yanıt gövdesi **mesaja konmaz**; mesaj Allure'daki maskelenmiş "API response" ekine yönlendirir. Hata mesajı failsafe raporuna maskelenmeden geçtiği için gövde orada durmaz |
+| Rest Assured'ın kendi konsol log'u | **Maskelenmez** — bu yüzden `api.log.request` / `api.log.response` varsayılan olarak kapalıdır ve doğrulama hatasında otomatik log (`enableLoggingOfRequestAndResponseIfValidationFails`) açılmaz. Hata kanıtı maskelenmiş Allure ekleridir |
 
-Request log'u yalnızca gerektiğinde aç:
+---
+
+## 5. Adım katalogu
+
+Ayrıntılı liste: [docs/step-catalog.md](docs/step-catalog.md)
+
+### Mobil — iki yazım stili
+
+**Genel adımlar** (hız ve keşif için): Gherkin'e locator değil **element adı** girer.
+
+```gherkin
+* Click to element "VIEWS_MENU" in "Api Demos Page"
+* Verify element "BUTTONS_OPTION" exists in "Api Demos Page"
+```
+
+Yeni bir ekran için adım yazmak gerekmez; locator'ı `*Locators` sınıfına eklemek ve sayfayı
+`LocatorRegistry.PAGES` listesine tek satırla kaydetmek yeterlidir.
+
+**İş dili adımları** (regresyon ve iletişim için): çok adımlı akışlar ve formun iç tutarlılığını
+doğrulayan senaryolar Page Object üzerinden yürür.
+
+```gherkin
+When the user selects "Jupiter" from the planet dropdown
+Then only the second radio button should be selected
+```
+
+### API — endpoint başına sınıf yok
+
+```gherkin
+Given the base url is "https://baska-servis.com"      # opsiyonel, sadece bu senaryo
+And the request headers:
+  | X-Request-Id | commencis-interview |
+And the query params:
+  | postId | 1 |
+And the request body from csv "testdata/csv/posts.csv" where "case" is "happy_path"
+When I send POST to "/posts"
+Then the response status should be 201
+And I save response field "id" as "postId"
+And I save the response to csv "created-posts.csv" with fields "id,title,userId"
+```
+
+Gövde dört kaynaktan gelebilir: **DocString** (elle yazma), **JSON dosyası**, **CSV satırı**,
+**DataTable**.
+
+### Yer tutucular
+
+| Token | Kaynak |
+| --- | --- |
+| `${ctx:postId}` | Önceki adımda context'e kaydedilen değer |
+| `${config:api.base.url}` | Aktif ortam/cihaz katmanından gelen ayar |
+
+Başka kaynak yoktur. Bilinmeyen bir önek veya boş değer sessizce geçilmez, hata verir. `notNull`
+gibi doğrulamalar yer tutucu değil ayrı adımdır (`the response field "id" should not be null`).
+
+---
+
+## 6. Test verisi
+
+| | Yer | Neden |
+| --- | --- | --- |
+| Girdi CSV / JSON | `src/test/resources/testdata/` | Classpath'ten okunur, git'te versiyonlanır |
+| Çıktı CSV | `target/output/` | `resources` derleme girdisidir; oraya yazmak git'i kirletir ve `clean` ile temizlenmez |
+
+CSV ayrıştırma Apache Commons CSV ile yapılır: tırnak içindeki virgül, gömülü satır sonu ve escape
+edilmiş tırnak doğru okunur. Çıktıda başlık bir kez yazılır, değerler escape edilir, aynı JVM içinde
+aynı dosyaya paralel append güvenlidir.
+
+**Sınır:** CSV düz bir tablodur. `CsvData.toJson` sayı, boolean ve null görünümlü değerleri tipli
+yazar, gerisi string kalır. İç içe nesne veya dizi içeren gövdeler için JSON dosyası veya DocString
+kullanılır.
+
+---
+
+## 7. Rapor
 
 ```powershell
-.\mvnw.cmd verify -Papi "-Dapi.log.request=true"
+start .\target\allure-report\index.html
 ```
 
-`mobile.platform` hem driver'ı hem locator seçimini besleyen tek kaynaktır; ikisi tanım gereği
-tutarlıdır. Bilinmeyen bir değer verilirse koşum açık hatayla durur:
-`mobile.platform 'android' veya 'ios' olmali, gelen deger: 'windows'.`
+Rapor `post-integration-test` aşamasında üretilir; Failsafe'in `verify` goal'ü build'i kırmadan önce
+çalışır, **yani test fail olsa da HTML oluşur.** Fail eden test build'i yine kırar.
 
-**Not:** Önceki sürümde property isimlerini sabit olarak tutan bir `ConfigKeys` sınıfı vardı. Bu
-boyuttaki bir projede araya bir sınıf koymak okumayı kolaylaştırmıyor, o yüzden anahtarlar doğrudan
-string olarak kullanılıyor.
+Raporda bulunanlar:
 
-Token gibi gizli değerler repository'ye yazılmaz. Log'a da düşmez: assertion başarısız olduğunda
-basılan request/response çıktısında `Authorization`, `Cookie`, `Proxy-Authorization` ve `X-Api-Key`
-maskelenir.
+- **Environment paneli** — `environment`, `device`, `mobile.platform`, `api.base.url`,
+  `appium.server.url`. Koşum başında `target/allure-results/environment.properties` olarak üretilir
+  (statik kaynak olamaz, `clean` siler). Token/key/secret **yazılmaz**.
+- **API request / response ekleri** — method, **gönderilen gerçek URI** (çözülmüş base URL, yerleşmiş
+  path parametreleri, encode edilmiş query string), maskeli header'lar, gövde, status ve süre.
+  Kanıt `ApiReportingFilter` içinde, yani ortak HTTP katmanında üretilir: Cucumber adımları ve
+  `live/LiveCodingTest` aynı eki alır, istek ikinci kez gönderilmez.
+- **Mobil ekran görüntüsü** — `@After(order = 9000)`; Bar2 capture'ından (10.000) sonra, driver'ı
+  kapatan hook'tan (10) önce çalışır. Bar2 ve Allure ayrı boru hatlarıdır, biri diğerini beslemez.
+
+İlk çalıştırma internet ister: allure-maven, Node runtime'ı ve Allure paketini `.allure/` klasörüne
+indirir (~35 sn, bir kez).
 
 ---
 
-## 5. Capability nedir?
+## 8. Yeni test eklemek
 
-Capability, Appium'a **hangi cihazda, hangi uygulamayı, nasıl** çalıştıracağını söyleyen ayarlardır.
-Eskiden `DesiredCapabilities` ile map olarak verilirdi; artık tip güvenli **`UiAutomator2Options`**
-kullanılır:
+**API senaryosu:** `features/api/` altına `.feature` ekle, `@api` ile tag'le. Çoğu durumda Java
+yazmana gerek yok — adım katalogu adres, gövde, parametre ve doğrulamayı karşılar. Aynı endpoint 3+
+senaryoda tekrar ederse `api/service/` altına ince bir sarmalayıcı eklenebilir.
 
-```java
-UiAutomator2Options options = new UiAutomator2Options();
-options.setUdid("emulator-5554");
-options.setAppPackage("io.appium.android.apis");
-options.setAppActivity(".ApiDemos");
-options.setNoReset(false);
-```
+**Mobil senaryo:**
+1. Locator'ı Appium Inspector ile bul
+2. `*Locators` sınıfına `public static final By` olarak ekle
+3. Yeni bir sayfa ise `LocatorRegistry.PAGES` listesine tek satır ekle
+4. Genel adımlarla yaz; akış çok adımlıysa Page Object'e metot ekleyip iş dili adımı yaz
 
-iOS tarafında karşılığı **`XCUITestOptions`**'tır (`setUdid`, `setBundleId`, `setApp`, `setNoReset`).
-Hangisinin kurulacağını `mobile.platform` belirler.
+Mobil senaryolar `@mobile` tag'ini taşımalıdır: driver'ı açan hook `@Before("@mobile")` ile
+sınırlıdır.
 
-Hepsi `config.properties`'ten okunur, kodda sabit değer yoktur → bkz. `MobileDriver`.
+**Framework değişikliği:** `frameworktest/` altına `@Tag("unit")` birim testi ekle. Bu testler
+`-Papi` ve `-Pmobile` koşumlarında da çalışır (`test.tags = api | unit` / `mobile | unit`).
+
+**Canlı kodlama:** `live/LiveCodingTest` içine `@Test` ekle, `@Tag("api")` veya `@Tag("mobile")` ver.
 
 ---
 
-## 6. Locator seçimi
-
-Locator'lar `ApiDemosLocators` içinde `public static final By` olarak durur; `ApiDemosPage` ve
-testler ham locator tanımlamaz. Öncelik sırası:
+## 9. Locator seçimi
 
 | # | Strateji | Örnek |
 | --- | --- | --- |
@@ -420,21 +447,14 @@ testler ham locator tanımlamaz. Öncelik sırası:
 | 3 | UiAutomator selector | `AppiumBy.androidUIAutomator("new UiSelector().text(\"Jupiter\")")` |
 | 4 | XPath | son çare — yavaş ve kırılgan |
 
-**Locator'lar kullandığın ApiDemos APK sürümüne göre değişebilir; Appium Inspector ile doğrula.**
-Inspector: <https://github.com/appium/appium-inspector/releases> → Remote Host `127.0.0.1`,
-Port `4723`, Path `/` → capability'leri gir → Start Session.
+**Locator'lar kullandığın APK sürümüne göre değişebilir; Appium Inspector ile doğrula.**
+Remote Host `127.0.0.1`, Port `4723`, Path `/`.
 
-Native dropdown'da Selenium `Select` çalışmaz. Yaklaşım: dropdown'a tıkla, sonra açılan listedeki
-seçeneğe tıkla (`BasePage.openDropdownAndSelect`).
-
-Kaydırma ve swipe için eski `TouchAction` API'si kullanılmaz. `BasePage` her platformda o driver'ın
-kendi native gesture komutunu çağırır: Android'de UiAutomator2'nin `mobile: scrollGesture` /
-`mobile: swipeGesture`, iOS'ta XCUITest'in `mobile: scroll` / `mobile: swipe` komutları.
-`scrollDown()` gibi public metotlar iki platformda da aynıdır.
+Native dropdown'da Selenium `Select` çalışmaz: dropdown'a tıkla, sonra açılan listedeki seçeneğe
+tıkla (`ElementActions.selectOption`). Kaydırma için eski `TouchAction` API'si kullanılmaz;
+Android'de `mobile: scrollGesture`, iOS'ta `mobile: scroll` çağrılır.
 
 ### Aynı elemanın iki platformda farklı locator'ı
-
-`PlatformBy` aktif platforma göre seçim yapar:
 
 ```java
 public static final By PAY_BUTTON = PlatformBy.of(
@@ -442,272 +462,48 @@ public static final By PAY_BUTTON = PlatformBy.of(
         AppiumBy.accessibilityId("payButton"));
 ```
 
-Sözleşme: **bir JVM koşumu tek platform çalıştırır.** Locator'lar `static final` olduğu için seçim
-class yüklenirken bir kez yapılır; aynı JVM içinde paralel Android + iOS koşumu desteklenmez.
-
-`ApiDemosLocators` bunu kullanmaz: ApiDemos Android-only bir demo uygulamasıdır, iOS build'i yoktur.
-**Bilinmeyen bir platform locator'ı için tahmini selector veya boş `By.id("")` yazılmaz** —
-`PlatformBy.of` null locator kabul etmez.
+**Sözleşme: bir JVM koşumu tek platform çalıştırır.** Locator'lar `static final` olduğu için seçim
+class yüklenirken bir kez yapılır; aynı JVM içinde paralel Android + iOS koşumu desteklenmez. Ayrı
+Maven/JVM koşumları kullanılır.
 
 ---
 
-## 7. API testleri
+## 10. Capability
 
-`PostApi` dört endpoint metodu içerir: `getPost`, `createPost`, `updatePost`, `deletePost`.
-`PostApiTest` içindeki örnekler: GET alan doğrulama, JSON dosyasından POST, PUT, DELETE,
-404 negatif testi ve bir yanıttan alınan değeri sonraki istekte kullanma.
-
-### İki kullanım biçimi
-
-Adres, gövde ve header doğrudan testin içine yazılabilir — ayar dosyasına dokunmak gerekmez:
-
-```java
-String url = "https://example.com/api/users";
-String body = """
-        { "name": "Bartu", "email": "bartu@test.com" }
-        """;
-Map<String, String> headers = Map.of("Authorization", "Bearer token", "Client-Key", "client-key");
-
-api.post(url, body, headers)
-        .then()
-        .statusCode(201)
-        .body("name", equalTo("Bartu"));
-```
-
-Aynı servis üzerinde çalışılıyorsa `api.base.url` bir kez tanımlanır, testte yalnızca endpoint kalır:
-
-```java
-api.get("/posts/1").then().statusCode(200);
-```
-
-`api.base.url` bir test adımı değil, ortak bir environment/config değeridir. Senaryo öncesi ortak
-hazırlığı yapan yer `BaseApiTest` içindeki `@BeforeEach`'tir; bu yönüyle Cucumber'ın
-`Background` / `@Before` yaklaşımına benzer.
-
-İkisi birlikte de çalışır: `api.base.url` dolu olsa bile full URL verilirse o adrese gidilir. Body
-`String` olmak zorunda değil; `Map` veya JSON'a serialize edilebilen bir POJO da verilebilir.
-
-### Retry yok, status doğrulaması testte
-
-İstek **bir kez** gönderilir — gitmiyorsa zaten bir sorun vardır, tekrar denemek hatayı gizler.
-`ApiClient` hiçbir status kodunu doğrulamaz: `400`, `404`, `500` de `Response` olarak döner,
-beklenen kodu `@Test` söyler. Bu yüzden aynı client hem pozitif hem negatif senaryoya hizmet eder.
-
-### Hata tipi mesajda görünür
-
-Yalnızca istek **geçerli bir HTTP Response üretemeden** başarısız olduğunda `ApiRequestException`
-fırlar ve sorunun nerede olduğunu söyler; orijinal hata `cause` olarak korunur. Sunucuya ulaşılmış
-olması bunu engellemez — read timeout ve TLS handshake hataları da bu kapsamdadır:
-
-```
-CONNECTION_ERROR - GET http://127.0.0.1:59164/posts/1 failed: ConnectException: Connection refused
-DNS_ERROR        - GET http://yok.invalid/posts/1 failed: UnknownHostException: ...
-TIMEOUT_ERROR    - GET http://127.0.0.1:59161/slow failed: SocketTimeoutException: Read timed out
-```
-
-Kategoriler: `DNS_ERROR`, `CONNECTION_ERROR`, `TIMEOUT_ERROR`, `TLS_ERROR`, `REQUEST_ERROR`.
-Sınıflandırma cause zinciri gezilerek yapılır, çünkü gerçek neden çoğu zaman sarmalanmış gelir.
-
-### JSON body okuma
-
-```java
-String body = JsonReader.read("testdata/create-post.json");
-postApi.createPost(body).then().statusCode(201);
-```
-
-### DTO nedir, neden yok?
-
-- **Request DTO**: Java nesnesini JSON request body'ye çevirmek için kullanılır.
-- **Response DTO**: JSON response'u Java nesnesine map etmek için kullanılır.
-
-Bu projede JSON dosyası + JsonPath tercih edildi; böylece hangi alanın gittiğini/geldiğini
-dosyada birebir görüyorsun. Gerçek bir projede şema sabitse DTO eklemek daha bakımlıdır.
-
-### JSONPlaceholder gerçekten kayıt tutmaz
-
-`api.base.url` varsayılanı JSONPlaceholder'dır: sahte bir servistir. `POST /posts` **201** döner ve
-gönderdiğin gövdeyi `id: 101` ile echo eder, ama **hiçbir şey saklanmaz** — ardından
-`GET /posts/101` **404** verir. Testler bu yüzden yalnızca yanıt sözleşmesini doğrular.
+Capability, Appium'a **hangi cihazda, hangi uygulamayı, nasıl** çalıştıracağını söyleyen ayarlardır.
+Tip güvenli `UiAutomator2Options` / `XCUITestOptions` kullanılır; hepsi cihaz profili dosyasından
+okunur, kodda sabit değer yoktur (bkz. `MobileDriver`).
 
 ---
 
-## 8. Rapor
+## 11. iOS durumu
 
-```
-target/allure-results        ham sonuçlar
-target/allure-report/index.html    HTML rapor (tek dosya)
-```
+`mobile.platform=ios` verildiğinde `MobileDriver` gerçek bir XCUITest oturumu açmayı dener; kod
+yerinde ve derleniyor. **İstemcinin işletim sistemi kontrol edilmez** — `appium.server.url` uzaktaki
+bir macOS makineyi gösterebilir.
 
-```powershell
-start .\target\allure-report\index.html
-```
-
-Rapor `post-integration-test` aşamasında üretilir; Failsafe'in `verify` goal'ü build'i kırmadan
-önce çalışır, **yani test fail olsa da HTML oluşur.** Fail eden test build'i yine kırar.
-
-İlk çalıştırma internet ister: allure-maven, raporu üretmek için Node runtime'ı ve Allure paketini
-`.allure/` klasörüne indirir (~35 sn, sadece bir kez).
-
-`target/allure-results` klasörü istenirse Bar2 Report Plugin ile de denenebilir; ancak bu projenin
-temel çıktısı yukarıdaki Allure HTML dosyasıdır. Bar2 zorunlu bir bağımlılık değildir.
+**iOS E2E: NOT RUN.** Gerçek bir XCUITest oturumu hiç açılmadı. `ApiDemos` bir Android demo
+uygulamasıdır, iOS build'i yoktur.
 
 ---
 
-## 9. iOS durumu
+## 12. Doğrulama durumu
 
-`mobile.platform=ios` verildiğinde `MobileDriver` artık `XCUITestOptions` + `IOSDriver` ile gerçek
-bir oturum açmayı dener; kod yerinde ve derleniyor.
+Son koşum: 16.08.2026
 
-**İstemcinin işletim sistemi kontrol edilmez.** XCUITest çalıştıran **Appium server** macOS + Xcode
-gerektirir, ama `appium.server.url` uzaktaki bir macOS makineyi gösterebilir — Windows'tan böyle bir
-server'a bağlanmak normal bir kullanımdır. Bu yüzden OS'a bakıp iOS'u bloklayan bir kontrol yoktur.
+| Kapsam | Komut | Durum |
+| --- | --- | --- |
+| Framework birim testleri | `-Papi` (`@Tag("unit")`) | **PASS** — 83 test |
+| JUnit live adapter (API) | `-Papi` (`@Tag("api")`) | **PASS** — 5 test |
+| Cucumber API senaryoları | `-Pcucumber "-Dcucumber.filter.tags=@api"` | **PASS** — 11 senaryo |
+| Cucumber mobil glue eşleşmesi | dry-run `@mobile` | **PASS** — 9 senaryo, undefined step yok |
+| Allure HTML + Environment paneli | `-Pcucumber` ve `-Papi` | **PASS** — her iki koşum tipinde de üretiliyor |
+| Allure API request/response ekleri | `-Pcucumber` (12+12) ve `-Papi` (5+5) | **PASS** — gerçek URI + query görünüyor |
+| Sızıntı kanaryası — header, URL userinfo, gizli query parametresi, iç içe JSON gövde, `byte[]` gövde, başarısız doğrulama log'u | `ReportRedactionCanaryTest` + `ValidationFailureLogTest` + artifact taraması | **PASS** — `allure-results`, `allure-report`, `failsafe-reports`, `output` temiz |
+| CSV çıktısı | `-Pcucumber` | **PASS** — `target/output/created-posts.csv` |
+| **Cucumber mobil E2E (gerçek cihaz)** | `-Pcucumber "-Dcucumber.filter.tags=@mobile and @smoke"` | **NOT RUN** |
+| **JUnit live adapter (mobil)** | `-Pmobile "-Dit.test=LiveCodingTest"` | **NOT RUN** |
+| **Mobil failure screenshot** | — | **NOT RUN** — hook ve kod yolu yerinde, kontrollü bir failing senaryo ile doğrulanmadı |
+| **iOS E2E** | — | **NOT RUN** |
 
-**iOS E2E: NOT RUN.** iOS kod yolu bugüne kadar yalnızca derlendi ve dispatch/konfigürasyon
-seviyesinde çalıştırıldı (`ios.udid` boşken açık hata verdiği doğrulandı). Gerçek bir XCUITest
-oturumu hiç açılmadı. Özellikle şunlar **doğrulanmamıştır**:
-
-- `mobile: scroll` / `mobile: swipe` yön semantiğinin Android tarafıyla örtüşmesi
-- XCUITest `mobile: scroll`, elementId verilmediğinde **active application element** üzerinde çalışır;
-  iç içe scroll alanlarındaki davranış test edilmedi
-- `getAttribute("label")` / `getAttribute("value")` ile metin okuma
-
-`ApiDemos` bir Android demo uygulamasıdır; iOS build'i yoktur, bu yüzden depoda çalışan bir iOS
-senaryosu bulunmaz.
-
----
-
-## 10. Yeni test eklemek
-
-**API:** `PostApi`'ye endpoint metodu ekle (sadece istek, assertion yok) → `PostApiTest`'e
-`@Test` ekle. Sınıf adı `*Test` ile bitmeli ve `@Tag("api")` taşımalı.
-
-**Mobile:** Locator'ı Appium Inspector ile bul → `ApiDemosLocators`'a `public static final By`
-olarak ekle → `ApiDemosPage`'e aksiyon metodu yaz → `ApiDemosTest`'e `@Test` ekle (`@Tag("mobile")`).
-
-Tag veya `*Test` son eki eksikse test sessizce çalışmaz — sadece bu iki kural akışı belirler.
-
-**Cucumber senaryosu:** `src/test/resources/features/api/` veya `features/mobile/` altına `.feature`
-ekle ve tag'le (`@api @smoke` veya `@mobile @smoke`) → `stepdefinition/` altındaki ilgili sınıfa adımı
-yaz. Step definition işi Page veya `PostApi` metoduna delege etmeli; **locator, bekleme, driver
-kullanımı ve request kurulumu orada tekrarlanmaz.** Given/When/Then seviyesinde ince sonuç
-assertion'ları (status kodu, alan değeri, görünürlük) step definition içinde yer alabilir.
-
-Mobile senaryolar `@mobile` tag'ini taşımalıdır: driver'ı açan hook `@Before("@mobile")` ile
-sınırlıdır, tag yoksa driver açılmaz ve adım `Mobil driver acilmadi...` hatası verir.
-
----
-
-## 11. Interview APK workflow
-
-Mülakatta bir APK ve senaryo verildiğinde izlenecek sıra. Kod değişikliği gerekmez; uygulama
-`config.properties` veya `-D` ile seçilir.
-
-### 1) Uygulamayı tanıt
-
-**APK dosyası verildiyse** — Appium APK'yı cihaza kurar:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554 -Dandroid.app.path=C:\apps\verilen.apk
-```
-
-**Uygulama emülatörde zaten kuruluysa** — `android.app.path` boş bırakılır, package/activity kullanılır:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554 -Dandroid.app.package=com.ornek.app -Dandroid.app.activity=.MainActivity
-```
-
-Uygulama splash ekranından sonra **başka bir activity'ye** geçiyorsa Appium yanlış ekranı bekleyip
-zaman aşımına düşebilir. Bu durumda opsiyonel iki alanı doldur:
-
-```
-android.app.wait.package=com.ornek.app
-android.app.wait.activity=.HomeActivity
-```
-
-Boş bırakılırsa hiç uygulanmaz, davranış değişmez.
-
-### 2) Cihazı doğrula
-
-```powershell
-adb devices -l
-```
-
-Çıktıdaki ilk sütun `android.udid` değeridir (örn. `emulator-5554`).
-
-### 3) Appium 3 server'ı başlat
-
-Ayrı bir terminalde açık kalmalı:
-
-```powershell
-appium.cmd
-```
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:4723/status
-```
-
-### 4) Locator'ları Appium Inspector ile bul
-
-| Alan | Değer |
-| --- | --- |
-| Remote Host | `127.0.0.1` |
-| Remote Port | `4723` |
-| Remote Path | `/` |
-
-Capability olarak testin kullandığı değerleri gir, **Start Session** de, ekrandan elemana tıklayıp
-sağdaki `content-desc` / `resource-id` değerlerini oku. Öncelik: accessibilityId → id →
-UiAutomator selector → XPath (bkz. §6).
-
-### 5) Senaryoyu ekle
-
-Locator'ı `ApiDemosLocators` benzeri bir locator class'ına `public static final By` olarak ekle,
-aksiyon metodunu ilgili page class'ına yaz, testi `@Tag("mobile")` ile `*Test` sınıfına koy
-(bkz. §10).
-
-### 6) Çalıştır
-
-Tüm mobile testleri:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554
-```
-
-Tek bir test class'ı:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554 "-Dit.test=ApiDemosTest"
-```
-
-Tek bir metot:
-
-```powershell
-.\mvnw.cmd clean verify -Pmobile -Dandroid.udid=emulator-5554 "-Dit.test=ApiDemosTest#opensViewsAndGoesBack"
-```
-
-Rapor: `target/allure-report/index.html`
-
-### Mevcut doğrulama durumu
-
-Neyin gerçekten koşulduğunu ve neyin koşulmadığını ayırmak için:
-
-| Kapsam | Durum |
-| --- | --- |
-| JUnit API testleri (`-Papi`, profilsiz) | **PASS** — 6/6 |
-| Cucumber API senaryoları (`-Pcucumber`) | **PASS** — 3 senaryo bulundu, 2 API senaryosu geçti, 1 mobile senaryo skip |
-| Cucumber glue eşleşmesi (`@mobile`, dry-run) | **PASS** — undefined step yok, driver açılmadı |
-| Platform seçimi ve driver dispatch | **PASS** — android / ios / geçersiz değer için açık hata |
-| **Android E2E** | **NOT RUN** |
-| **iOS E2E** | **NOT RUN** |
-
-**Android E2E: NOT RUN.** Mobile kodun platform dispatch'i ve config guard'ları gerçekten
-çalıştırıldı (`mobile.platform` çözümü, eksik `android.udid`/`ios.udid` hataları, `@Before("@mobile")`
-hook'unun tetiklenmesi), ancak **gerçek bir Appium session hiç açılmadı** — bağlı cihaz veya
-emülatör üzerinde koşum yapılmadı. Dolayısıyla `ApiDemosLocators` locator'ları, dropdown akışı,
-`scrollUntilVisible` görünürlük kontrolü ve `mobile: scrollGesture` / `mobile: swipeGesture`
-çağrıları **doğrulanmamıştır**. İlk gerçek koşumda locator'ların Appium Inspector ile teyit edilmesi
-gerekir. `BasePage`'deki liste ve WebView metotları henüz hiçbir test tarafından çağrılmıyor;
-fail-screenshot hook'unun PNG üretmesi de cihaz gerektirdiği için test edilmedi.
-
-**iOS E2E: NOT RUN** (bkz. §9).
-
-Derleme başarısı veya Cucumber dry-run sonucu, gerçek cihaz E2E kanıtı değildir.
+**Derleme başarısı veya Cucumber dry-run sonucu, gerçek cihaz E2E kanıtı değildir.**

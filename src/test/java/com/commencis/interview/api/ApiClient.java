@@ -1,6 +1,6 @@
 package com.commencis.interview.api;
 
-import com.commencis.interview.util.ConfigReader;
+import com.commencis.interview.core.config.Config;
 import io.restassured.http.Method;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -21,7 +21,7 @@ public class ApiClient {
 
     /** Base URL {@code api.base.url} ayarindan okunur; tanimli degilse full URL kullanilir. */
     public ApiClient(RequestSpecification spec) {
-        this(spec, ConfigReader.get("api.base.url"));
+        this(spec, Config.get("api.base.url"));
     }
 
     /** Base URL'i testten vermek icin; bos verilirse yalnizca full URL kullanilabilir. */
@@ -71,10 +71,32 @@ public class ApiClient {
     }
 
     public Response send(Method method, String url, Object body, Map<String, ?> headers) {
+        return send(method, url, body, headers, Map.of(), Map.of());
+    }
+
+    /**
+     * Query ve path parametreli tam bicim.
+     *
+     * <p>Parametreler URL'e elle eklenmez; encoding ve {@code {id}} yerlestirme Rest Assured'a
+     * birakilir. {@code queryParams} bilerek kullanilir: {@code params} POST/PUT'ta form
+     * parametresine donusup govdeyi bozar.
+     */
+    public Response send(Method method,
+                         String url,
+                         Object body,
+                         Map<String, ?> headers,
+                         Map<String, ?> queryParams,
+                         Map<String, ?> pathParams) {
         String targetUrl = resolveUrl(method, url);
         RequestSpecification request = given().spec(spec);
         if (headers != null && !headers.isEmpty()) {
             request.headers(headers);
+        }
+        if (queryParams != null && !queryParams.isEmpty()) {
+            request.queryParams(queryParams);
+        }
+        if (pathParams != null && !pathParams.isEmpty()) {
+            request.pathParams(pathParams);
         }
         if (body != null) {
             request.body(body);
