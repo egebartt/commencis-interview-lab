@@ -87,7 +87,7 @@ Kural: locator'ın sahibi Page'dir; `click`/`wait`/`scroll` gibi teknik dokunuş
 
 ## Allure terminal komutları
 
-| Komut                                             | Amaç                      |
-|---------------------------------------------------|---------------------------|
-| `.\mvnw.cmd allure:report `                       | `Allure report build`     |
-| `Start-Process .\target\allure-report\index.html` | `Allure report open html` |
+| Komut                                             | Amaç                                  |
+|---------------------------------------------------|---------------------------------------|
+| `.\mvnw.cmd allure:report `                       | `Raporu yeniden üret (test koşmadan)` |
+| `Start-Process .\target\allure-report\index.html` | `Raporu tarayıcıda aç `               |
