@@ -1,127 +1,244 @@
 package com.commencis.interview.api;
 
-import com.commencis.interview.core.config.Config;
+import com.commencis.interview.core.Config;
+import com.commencis.interview.core.Redaction;
+import io.qameta.allure.Allure;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.HttpClientConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.filter.Filter;
+import io.restassured.filter.FilterContext;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.filter.log.ResponseLoggingFilter;
+import io.restassured.http.ContentType;
+import io.restassured.http.Header;
 import io.restassured.http.Method;
 import io.restassured.response.Response;
+import io.restassured.specification.FilterableRequestSpecification;
+import io.restassured.specification.FilterableResponseSpecification;
 import io.restassured.specification.RequestSpecification;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import static io.restassured.RestAssured.given;
 
-
+/**
+ * Bir senaryonun (veya bir JUnit testinin) HTTP oturumu: istek kurulur, gonderilir, son yanit
+ * saklanir. Assertion yapmaz; dogrulama Step Definition'larin isidir.
+ *
+ * <p>Durumun omru bilerek ikiye ayrilmistir:
+ * <ul>
+ *   <li><b>Header'lar ve base url</b> senaryo boyunca yasar; ayni senaryodaki ikinci istek de
+ *       ayni kimlikle gider.</li>
+ *   <li><b>Govde ve query parametreleri</b> kuruldugu istege aittir, gonderimden sonra
+ *       temizlenir; aksi halde sonraki istek istemeden eski govdeyi tasirdi.</li>
+ * </ul>
+ *
+ * <p>Rapor kaniti tek noktada uretilir: {@code ReportFilter} her istegi ve yaniti Allure'a ekler,
+ * gizli header/query/govde alanlarini {@link Redaction} ile maskeleyerek. Adim tarafinda ayrica
+ * ek cagrisi gerekmez.
+ */
 public class ApiClient {
 
-    /** http://, https:// gibi bir sema ile basliyorsa URL full kabul edilir. */
+    /** http:// gibi bir sema ile basliyorsa adres full URL kabul edilir. */
     private static final Pattern ABSOLUTE_URL = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.\\-]*://");
 
-    private final RequestSpecification spec;
-    private final String baseUrl;
+    private final Map<String, Object> headers = new LinkedHashMap<>();
+    private final Map<String, Object> queryParams = new LinkedHashMap<>();
 
-    /** Base URL {@code api.base.url} ayarindan okunur; tanimli degilse full URL kullanilir. */
-    public ApiClient(RequestSpecification spec) {
-        this(spec, Config.get("api.base.url"));
+    private String baseUrl = Config.get("api.base.url");
+    private Object body;
+    private Response response;
+    private RequestSpecification spec;
+
+    // ------------------------------------------------------------------
+    // Istek kurulumu
+    // ------------------------------------------------------------------
+
+    /** Yalnizca bu oturum icin adresi degistirir; config dosyasi etkilenmez. */
+    public void baseUrl(String url) {
+        this.baseUrl = url == null ? "" : url.trim();
     }
 
-    /** Base URL'i testten vermek icin; bos verilirse yalnizca full URL kullanilabilir. */
-    public ApiClient(RequestSpecification spec, String baseUrl) {
-        this.spec = spec;
-        this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
+    public void headers(Map<String, String> values) {
+        headers.putAll(values);
     }
+
+    public void queryParams(Map<String, String> values) {
+        queryParams.putAll(values);
+    }
+
+    public void body(Object body) {
+        this.body = body;
+    }
+
+    // ------------------------------------------------------------------
+    // Gonderim
+    // ------------------------------------------------------------------
 
     public Response get(String url) {
-        return send(Method.GET, url, null, Map.of());
+        return send(Method.GET, url);
     }
 
-    public Response get(String url, Map<String, ?> headers) {
-        return send(Method.GET, url, null, headers);
+    public Response post(String url, Object requestBody) {
+        body(requestBody);
+        return send(Method.POST, url);
     }
 
-    public Response post(String url, Object body) {
-        return send(Method.POST, url, body, Map.of());
+    public Response put(String url, Object requestBody) {
+        body(requestBody);
+        return send(Method.PUT, url);
     }
 
-    public Response post(String url, Object body, Map<String, ?> headers) {
-        return send(Method.POST, url, body, headers);
-    }
-
-    public Response put(String url, Object body) {
-        return send(Method.PUT, url, body, Map.of());
-    }
-
-    public Response put(String url, Object body, Map<String, ?> headers) {
-        return send(Method.PUT, url, body, headers);
-    }
-
-    public Response patch(String url, Object body) {
-        return send(Method.PATCH, url, body, Map.of());
-    }
-
-    public Response patch(String url, Object body, Map<String, ?> headers) {
-        return send(Method.PATCH, url, body, headers);
+    public Response patch(String url, Object requestBody) {
+        body(requestBody);
+        return send(Method.PATCH, url);
     }
 
     public Response delete(String url) {
-        return send(Method.DELETE, url, null, Map.of());
-    }
-
-    public Response delete(String url, Map<String, ?> headers) {
-        return send(Method.DELETE, url, null, headers);
-    }
-
-    public Response send(Method method, String url, Object body, Map<String, ?> headers) {
-        return send(method, url, body, headers, Map.of(), Map.of());
+        return send(Method.DELETE, url);
     }
 
     /**
-     * Query ve path parametreli tam bicim.
+     * Kurulan istegi gonderir.
      *
-     * <p>Parametreler URL'e elle eklenmez; encoding ve {@code {id}} yerlestirme Rest Assured'a
-     * birakilir. {@code queryParams} bilerek kullanilir: {@code params} POST/PUT'ta form
-     * parametresine donusup govdeyi bozar.
+     * <p>Query parametreleri URL'e elle eklenmez; encoding Rest Assured'a birakilir.
      */
-    public Response send(Method method,
-                         String url,
-                         Object body,
-                         Map<String, ?> headers,
-                         Map<String, ?> queryParams,
-                         Map<String, ?> pathParams) {
-        String targetUrl = resolveUrl(method, url);
-        RequestSpecification request = given().spec(spec);
-        if (headers != null && !headers.isEmpty()) {
+    public Response send(Method method, String url) {
+        RequestSpecification request = given().spec(spec());
+        if (!headers.isEmpty()) {
             request.headers(headers);
         }
-        if (queryParams != null && !queryParams.isEmpty()) {
+        if (!queryParams.isEmpty()) {
             request.queryParams(queryParams);
-        }
-        if (pathParams != null && !pathParams.isEmpty()) {
-            request.pathParams(pathParams);
         }
         if (body != null) {
             request.body(body);
         }
         try {
-            return request.request(method, targetUrl);
-        } catch (Exception e) {
-            // HTTP yaniti alinan istekler buraya dusmez; yalnizca gecerli bir Response uretemeden basarisiz olan istekler siniflandirilir.
-            throw ApiRequestException.from(method, targetUrl, e);
+            response = request.request(method, resolveUrl(url));
+            return response;
+        } finally {
+            body = null;
+            queryParams.clear();
         }
     }
 
-    private String resolveUrl(Method method, String url) {
+    /** Son yanit; dogrulama adimlari bunu okur. */
+    public Response response() {
+        if (response == null) {
+            throw new IllegalStateException("Henuz istek gonderilmedi. Once istek atan When adimini kullanin.");
+        }
+        return response;
+    }
+
+    // ------------------------------------------------------------------
+    // Yapilandirma
+    // ------------------------------------------------------------------
+
+    /** Spec ilk istekte kurulur; mobil senaryolar bosuna Rest Assured yapilandirmasi uretmez. */
+    private RequestSpecification spec() {
+        if (spec == null) {
+            int timeoutMillis = Config.getInt("api.timeout", 20) * 1000;
+
+            RequestSpecBuilder builder = new RequestSpecBuilder()
+                    .setConfig(RestAssuredConfig.newConfig()
+                            .httpClient(HttpClientConfig.httpClientConfig()
+                                    .setParam("http.connection.timeout", timeoutMillis)
+                                    .setParam("http.socket.timeout", timeoutMillis)))
+                    .setContentType(ContentType.JSON)
+                    .setAccept(ContentType.JSON)
+                    .addFilter(new ReportFilter());
+
+            // Token repository'ye yazilmaz: -Dapi.token=... veya API_TOKEN ile gelir.
+            String token = Config.get("api.token");
+            if (!token.isEmpty()) {
+                builder.addHeader("Authorization", "Bearer " + token);
+            }
+
+            // Ham istek/yaniti konsola basar. MASKELEME YOKTUR; yalnizca elle hata ayiklamak icin.
+            if (Config.getBoolean("api.log", false)) {
+                builder.log(LogDetail.ALL).addFilter(new ResponseLoggingFilter(LogDetail.BODY));
+            }
+
+            spec = builder.build();
+        }
+        return spec;
+    }
+
+    private String resolveUrl(String url) {
         String path = url == null ? "" : url.trim();
         if (path.isEmpty()) {
-            throw ApiRequestException.configuration(method, "<bos>", "URL verilmedi.");
+            throw new IllegalArgumentException("URL verilmedi.");
         }
         if (ABSOLUTE_URL.matcher(path).find()) {
             return path;
         }
         if (baseUrl.isEmpty()) {
-            throw ApiRequestException.configuration(method, path,
-                    "Relative path verildi ama api.base.url tanimli degil. Ya testte full URL kullanin "
-                            + "ya da api.base.url ayarlayin (config.properties veya -Dapi.base.url=<adres>).");
+            throw new IllegalStateException("Relative path verildi ama api.base.url tanimli degil: " + path
+                    + ". Ya testte full URL kullanin ya da api.base.url ayarlayin.");
         }
-        return baseUrl + (path.startsWith("/") ? path : "/" + path);
+        return baseUrl.replaceAll("/+$", "") + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    // ------------------------------------------------------------------
+    // Rapor
+    // ------------------------------------------------------------------
+
+    /**
+     * Istek ve yaniti Allure'a ekler. Maskeleme {@link Redaction} uzerinden yapilir ve yalnizca
+     * rapor kopyasini etkiler; gonderilen istek ile alinan {@link Response} degistirilmez.
+     *
+     * <p>URI filtre zincirinde okundugu icin base url cozulmus, path parametreleri yerlesmis ve
+     * query parametreleri encode edilmis haliyle gorunur.
+     */
+    private static final class ReportFilter implements Filter {
+
+        private static final int MAX_BODY_LENGTH = 20_000;
+
+        @Override
+        public Response filter(FilterableRequestSpecification request,
+                               FilterableResponseSpecification responseSpec,
+                               FilterContext context) {
+            Allure.addAttachment("API request", "text/plain", requestText(request));
+
+            Response response = context.next(request, responseSpec);
+
+            Allure.addAttachment("API response - HTTP " + response.statusCode()
+                            + " (" + response.time() + " ms)",
+                    "application/json", trim(Redaction.maskJson(response.asString())));
+            return response;
+        }
+
+        private static String requestText(FilterableRequestSpecification request) {
+            StringBuilder text = new StringBuilder()
+                    .append(request.getMethod())
+                    .append(' ')
+                    .append(Redaction.maskUrl(request.getURI()))
+                    .append(System.lineSeparator());
+            for (Header header : request.getHeaders()) {
+                text.append(header.getName())
+                        .append(": ")
+                        .append(Redaction.maskHeader(header.getName(), header.getValue()))
+                        .append(System.lineSeparator());
+            }
+            Object body = request.getBody();
+            if (body != null) {
+                text.append(System.lineSeparator()).append(trim(Redaction.maskBody(body)));
+            }
+            return text.toString();
+        }
+
+        /** Cok buyuk govde raporu sisirmesin. */
+        private static String trim(String body) {
+            if (body == null) {
+                return "";
+            }
+            return body.length() <= MAX_BODY_LENGTH
+                    ? body
+                    : body.substring(0, MAX_BODY_LENGTH) + System.lineSeparator() + "... (kisaltildi)";
+        }
     }
 }

@@ -247,19 +247,19 @@ $deviceReady = @($script:Findings | Where-Object { $_.Label -eq 'device' -and $_
 $serverReady = @($script:Findings | Where-Object { $_.Label -eq 'appium /status' -and $_.Status -eq 'OK' }).Count -gt 0
 
 if ($javaReady) {
-    Write-Host '  API tests      : ready   ->  .\mvnw.cmd clean verify -Papi' -ForegroundColor Green
+    Write-Host '  API tests      : ready   ->  .\mvnw.cmd clean verify' -ForegroundColor Green
 } else {
     Write-Host '  API tests      : blocked ->  set JAVA_HOME first' -ForegroundColor Red
 }
 
 if ($javaReady -and $deviceReady -and $serverReady) {
-    Write-Host '  Android tests  : ready   ->  .\mvnw.cmd clean verify -Pmobile -Dandroid.udid=<serial>' -ForegroundColor Green
+    Write-Host '  Android tests  : ready   ->  .\mvnw.cmd clean verify "-Dcucumber.filter.tags=@mobile" -Dandroid.udid=<serial>' -ForegroundColor Green
 } else {
     Write-Host '  Android tests  : blocked ->  needs Appium server + attached device (see above)' -ForegroundColor Yellow
 }
 
-Write-Host '  iOS tests      : not implemented. BaseMobileTest stops on mobile.platform=ios;' -ForegroundColor DarkGray
-Write-Host '                   XCUITest needs macOS + Xcode.' -ForegroundColor DarkGray
+Write-Host '  iOS tests      : config keys exist (platform=ios), but XCUITest needs an Appium' -ForegroundColor DarkGray
+Write-Host '                   server on macOS + Xcode; not verified on this machine.' -ForegroundColor DarkGray
 
 Write-Host ''
 Write-Host ("  {0} check(s) missing. Nothing was installed or changed." -f $missing.Count) -ForegroundColor DarkGray

@@ -5,7 +5,7 @@ target/
 .allure/
 
 # Never commit application binaries. The ApiDemos APK is downloaded per machine
-# and passed with -DappPath=... (see README).
+# and passed with android.app=... in config.properties (see README).
 *.apk
 *.ipa
 *.app/

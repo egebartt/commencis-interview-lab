@@ -22,7 +22,6 @@
     <junit.version>5.14.4</junit.version>
     <rest-assured.version>6.0.1</rest-assured.version>
     <gson.version>2.13.2</gson.version>
-    <commons-csv.version>1.12.0</commons-csv.version>
     <cucumber.version>7.29.0</cucumber.version>
     <!-- Appium Java Client surumu; Appium Server surumu ile ayni sey degildir. -->
     <appium.java-client.version>10.1.1</appium.java-client.version>
@@ -37,14 +36,6 @@
     <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
     <allure.report.directory>${project.build.directory}/allure-report</allure.report.directory>
 
-    <!-- Hangi testlerin calisacagini profile belirler. "unit" her profilde kosar:
-         framework birim testleri (frameworktest paketi) ortamdan bagimsizdir. -->
-    <test.tags>api | unit</test.tags>
-
-    <!-- CucumberRunnerTest adi *Test.java desenine uydugu icin varsayilan kosumlarda
-         acikca haric tutulur; yalnizca -Pcucumber onu calistirir. -->
-    <failsafe.includes>**/*Test.java</failsafe.includes>
-    <failsafe.excludes>**/CucumberRunnerTest.java</failsafe.excludes>
   </properties>
 
   <dependencyManagement>
@@ -111,15 +102,6 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>${gson.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- CSV test verisi icin. Elle split(",") parser'i quoted virgul, satir sonu ve
-         escape edilmis tirnak durumlarinda sessizce yanlis okur. -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-csv</artifactId>
-      <version>${commons-csv.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -241,13 +223,15 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
+          <!-- Varsayilan kosum feature dosyalarini calistirir. Hangi senaryolarin secilecegini
+               junit-platform.properties icindeki cucumber.filter.tags belirler (varsayilan @api),
+               komut satirindan "-Dcucumber.filter.tags=@mobile" ile ezilir.
+               Mulakat dosyasi ayri istenir: -Dit.test=InterviewLive (includes'u ezer). -->
           <includes>
-            <include>${failsafe.includes}</include>
+            <include>**/CucumberRunnerTest.java</include>
+            <!-- Cihaz istemeyen altyapi testleri her kosumda calisir. -->
+            <include>**/frameworktest/*Test.java</include>
           </includes>
-          <excludes>
-            <exclude>${failsafe.excludes}</exclude>
-          </excludes>
-          <groups>${test.tags}</groups>
           <!-- Sifir test veya yanlis -Dit.test degeri build'i yesil gostermesin. -->
           <failIfNoTests>true</failIfNoTests>
           <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
@@ -294,34 +278,4 @@
     </plugins>
   </build>
 
-  <profiles>
-    <profile>
-      <id>api</id>
-      <properties>
-        <test.tags>api | unit</test.tags>
-      </properties>
-    </profile>
-
-    <profile>
-      <id>mobile</id>
-      <properties>
-        <test.tags>mobile | unit</test.tags>
-      </properties>
-    </profile>
-
-    <!-- Yalnizca CucumberRunnerTest calisir; JUnit @Test'ler bu profilde kosulmaz.
-         Hangi senaryolarin secilecegini junit-platform.properties icindeki
-         cucumber.filter.tags belirler (varsayilan: @api and @smoke). -->
-    <profile>
-      <id>cucumber</id>
-      <properties>
-        <!-- JUnit group filtresi kullanilmaz: senaryo secimi cucumber.filter.tags ile yapilir,
-             iki ayri filtre katmani birbirini sessizce sifirlamasin. -->
-        <test.tags></test.tags>
-        <failsafe.includes>**/CucumberRunnerTest.java</failsafe.includes>
-        <!-- Bu profilde hicbir test haric tutulmaz; hicbir dosyayla eslesmeyen desen. -->
-        <failsafe.excludes>**/NoTestIsExcludedHere.java</failsafe.excludes>
-      </properties>
-    </profile>
-  </profiles>
 </project>

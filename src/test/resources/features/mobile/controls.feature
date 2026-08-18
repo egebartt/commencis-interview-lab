@@ -1,9 +1,9 @@
-@mobile @smoke
+@mobile
 Feature: Views Controls form
 
   Views > Controls > 1. Light Theme ekranindaki form kontrolleri.
-  Bu ekran is dili adimlariyla yazilir: dogrulamalar formun ic tutarliligina bakar
-  (radio grubunda tek secim, toggle etiketinin durumla eslesmesi gibi).
+  Dogrulamalar formun ic tutarliligina bakar: radio grubunda tek secim, toggle etiketinin
+  durumla eslesmesi gibi.
 
   Background:
     Given the Controls screen is open

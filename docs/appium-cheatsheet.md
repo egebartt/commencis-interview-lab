@@ -1,3 +1,6 @@
+## Appium Mobile Automation Cheat Sheet
+![Appium mimarisi](images/appium-architecture.png)
+
 # Appium cheat sheet
 
 Sık kullanılan komutlar ve locator örnekleri. Bu notlar önceden `config.properties` içindeydi;
@@ -22,7 +25,8 @@ Path `/`
 
 ## Capability JSON karşılığı
 
-Cihaz profili dosyasındaki anahtarlar Appium'a şu capability'ler olarak gider:
+`config.properties` içindeki anahtarlar Appium'a şu capability'ler olarak gider
+(`core/Driver.java` kurar; `platformName` ve `automationName` platforma göre sabittir):
 
 ```json
 {
@@ -51,9 +55,9 @@ Cihaz profili dosyasındaki anahtarlar Appium'a şu capability'ler olarak gider:
 AppiumBy.androidUIAutomator("new UiSelector().text(\"Alarm\")");
 AppiumBy.androidUIAutomator("new UiSelector().textContains(\"Alarm\")");
 AppiumBy.androidUIAutomator("new UiSelector().textStartsWith(\"Al\")");
-AppiumBy.androidUIAutomator("new UiSelector().textMatches(\"(?i).*alarm.*\")");
-AppiumBy.androidUIAutomator("new UiSelector().description(\"Alarm\")");
-AppiumBy.androidUIAutomator("new UiSelector().descriptionContains(\"Alarm\")");
+AppiumBy.androidUIAutomator("new UiSelector().textMatches(\"(?i).*alarm.*\")"); //(text ignorecase regex) (?i)
+AppiumBy.androidUIAutomator("new UiSelector().description(\"Alarm\")"); //(text content-desc)
+AppiumBy.androidUIAutomator("new UiSelector().descriptionContains(\"Alarm\")"); //(text content-desc contains)
 AppiumBy.androidUIAutomator("new UiSelector().className(\"android.widget.Button\").clickable(true)");
 AppiumBy.androidUIAutomator("new UiSelector().checkable(true).checked(true)");
 
@@ -74,7 +78,16 @@ AppiumBy.xpath("//android.widget.Toast[@text='Monitored switch is on']");
 
 ## Bu projede nereye yazılır
 
-Locator'lar `mobile/locator/*Locators.java` içinde `public static final By` alanı olarak durur ve
-`LocatorRegistry.PAGES` listesine kaydedilir. Değeri senaryodan gelen locator'lar
-(`byText`, `toast`) `DynamicLocators` içindedir. Locator sınıflarında aksiyon, page sınıflarında
-locator bulunmaz.
+Sabit locator'lar ait oldukları ekranın Page sınıfında, `mobile/pages/*Page.java` içinde
+`private static final By` olarak durur — ayrı bir `locators` paketi yoktur. Değeri çalışma anında
+gelen locator'lar (`byText`, `toast`) `mobile/actions/ElementActions` içindeki static üreticilerdir.
+
+Kural: locator'ın sahibi Page'dir; `click`/`wait`/`scroll` gibi teknik dokunuşlar
+`ElementActions` içinde toplanır; Step Definition katmanında ne locator ne driver bulunur.
+
+## Allure terminal komutları
+
+| Komut                                             | Amaç                      |
+|---------------------------------------------------|---------------------------|
+| `.\mvnw.cmd allure:report `                       | `Allure report build`     |
+| `Start-Process .\target\allure-report\index.html` | `Allure report open html` |

@@ -1,167 +1,157 @@
 # Adım katalogu
 
-Hazır adımların tam listesi. Yeni bir senaryo yazmadan önce buraya bak — çoğu durumda Java yazmaya
-gerek kalmaz.
+Hazır adımların tam listesi. Yeni senaryo yazmadan önce buraya bak — API tarafında çoğu durumda
+Java yazmaya gerek kalmaz.
+
+Terim ayrımı: `.feature` içindeki Gherkin cümlesi **step**, onu karşılayan `@Given`/`@When`/`@Then`
+metodu **Step Definition**'dır. Aşağıdaki tablolarda soldaki sütun step, başlıktaki dosya o
+step'lerin Step Definition'larıdır.
 
 Tüm metin parametreleri yer tutucu çözümünden geçer: `${ctx:anahtar}` ve `${config:anahtar}`.
 
 ---
 
-## Mobil — genel adımlar
+## API — `stepdefinitions/api/ApiStepDefinitions.java`
 
-`stepdefinition/common/ElementStepDefinitions.java` · 16 adım
+Endpoint başına sınıf yoktur; adres, gövde ve parametreler senaryodan gelir.
 
-Gherkin'e **locator değil element adı** girer. Element adı `*Locators` sınıfındaki alan adıdır;
-sayfa adı ise o sınıftaki `PAGE_NAME` değeridir. Eşleşme toleranslıdır: boşluk, alt çizgi ve
-noktalama yok sayılır, büyük/küçük harf önemsizdir.
+### İstek
 
-`* Click to element "VIEWS_MENU" in "Api Demos Page"` = `* Click to element "views menu" in "api_demos_page"`
+| Adım | Not |
+| --- | --- |
+| `Given the base url is "<url>"` | Yalnızca bu senaryo için; config dosyası etkilenmez |
+| `Given the request headers:` | DataTable, 2 kolon — senaryo boyunca yaşar |
+| `Given the query params:` | DataTable — encoding Rest Assured'a bırakılır |
+| `Given the request body:` | DocString — gövde senaryonun içine yazılır |
+| `Given the request body from file "<classpath>"` | `testdata/create-post.json` |
+| `When I send <GET\|POST\|PUT\|PATCH\|DELETE> to "<url>"` | Relative path veya full URL |
 
-### Aksiyon
-
-| Adım |
-| --- |
-| `Click to element "<KEY>" in "<Page>"` |
-| `Click to element with text "<text>"` |
-| `Write "<text>" to element "<KEY>" in "<Page>"` |
-| `Clear text of element "<KEY>" in "<Page>"` |
-| `Scroll to element "<KEY>" and click in "<Page>"` |
-| `Wait for element "<KEY>" in "<Page>"` |
-| `Navigate back` |
-| `Hide the keyboard` |
+Gövde ve query parametreleri **gönderimden sonra temizlenir**; header'lar ve base url senaryo
+boyunca kalır.
 
 ### Doğrulama
 
-| Adım |
-| --- |
-| `Verify element "<KEY>" exists in "<Page>"` |
-| `Verify element "<KEY>" not exists in "<Page>"` |
-| `Check if element "<KEY>" has text "<text>" in "<Page>"` |
-| `Check if element "<KEY>" contains text "<text>" in "<Page>"` |
-| `Check element "<KEY>" is checked in "<Page>"` |
-| `Check element "<KEY>" is not checked in "<Page>"` |
-| `Toast message "<text>" should be visible` |
+| Adım | Not |
+| --- | --- |
+| `Then the response status should be <int>` | |
+| `Then the response time should be under <int> ms` | |
+| `Then the response field "<jsonPath>" should be "<value>"` | `id`, `[0].postId`, `data.user.name` |
+| `Then the response field "<jsonPath>" should not be null` | |
+| `Then the response fields should be:` | DataTable — alan/beklenen değer |
+| `Then I save response field "<jsonPath>" as "<name>"` | Sonra `${ctx:<name>}` |
 
-### Taşıma
-
-| Adım |
-| --- |
-| `Save text of element "<KEY>" as "<name>" in "<Page>"` → sonra `${ctx:<name>}` |
-
-### Örnek
+### Örnek — zincirleme
 
 ```gherkin
-Scenario: A planet is selected with generic steps
-  * Click to element "VIEWS_MENU" in "Api Demos Page"
-  * Scroll to element "SPINNER_OPTION" and click in "Api Demos Page"
-  * Click to element "PLANET_DROPDOWN" in "Api Demos Page"
-  * Click to element with text "Jupiter"
-  * Check if element "PLANET_DROPDOWN_VALUE" has text "Jupiter" in "Api Demos Page"
+Scenario: A value from the first response is used in the second request
+  When I send GET to "/posts/1"
+  Then the response status should be 200
+  And I save response field "id" as "postId"
+  Given the request body:
+    """
+    { "title": "Updated from context", "userId": 7 }
+    """
+  When I send PUT to "/posts/${ctx:postId}"
+  Then the response status should be 200
 ```
 
-> Gherkin `*` anahtar kelimesini destekler; Given/When/Then de kullanılabilir.
+### Veri odaklı koşum
 
----
-
-## Mobil — iş dili adımları
-
-Çok adımlı akışlar ve formun iç tutarlılığını doğrulayan senaryolar Page Object üzerinden yürür.
-Genel adımlar hız ve keşif için, iş dili adımları regresyon ve iletişim içindir.
-
-`stepdefinition/mobile/ApiDemosStepDefinitions.java`
-
-| Adım |
-| --- |
-| `the Api Demos home screen is visible` |
-| `the user opens the Views menu` |
-| `the Buttons option should be visible` |
-| `the user opens the Spinner screen` |
-| `the user selects "<planet>" from the planet dropdown` |
-| `the selected planet should be "<planet>"` |
-| `the user opens the Switches screen` |
-| `the user taps the monitored switch` |
-| `the monitored switch should be <on\|off>` |
-| `the "<message>" toast should be visible` |
-
-`stepdefinition/mobile/ControlsStepDefinitions.java`
-
-| Adım |
-| --- |
-| `the Controls screen is open` |
-| `the user types "<text>" into the text field` |
-| `the text field should contain "<text>"` |
-| `the user taps the first checkbox` |
-| `the first checkbox should be <checked\|unchecked>` |
-| `the user selects the second radio button` |
-| `only the second radio button should be selected` |
-| `the user taps the first toggle` |
-| `the first toggle should be on and labelled "<label>"` |
-| `the user selects "<planet>" from the Controls planet dropdown` |
-| `the selected Controls planet should be "<planet>"` |
-| `the enabled Save button should be clickable` |
-| `the disabled Save button should not be clickable` |
-
----
-
-## API — istek
-
-`stepdefinition/api/ApiRequestStepDefinitions.java`
-
-| Adım | Not |
-| --- | --- |
-| `the base url is "<url>"` | Yalnızca bu senaryo için; ortam ayarı etkilenmez |
-| `the request headers:` | DataTable, 2 kolon |
-| `the query params:` | DataTable — encoding Rest Assured'a bırakılır |
-| `the path params:` | DataTable — URL'deki `{id}` yerine geçer |
-| `the request body:` | DocString — gövde elle yazılır |
-| `the request body from json "<classpath>"` | `testdata/json/...` |
-| `the request body from csv "<classpath>" row <n>` | Başlık sayılmaz, 1'den başlar |
-| `the request body from csv "<classpath>" where "<column>" is "<value>"` | Kolon eşleşmesi |
-| `the request body from table:` | DataTable → düz JSON gövde |
-| `I send <METHOD> to "<url>"` | GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS |
-
-Adres üç biçimde verilebilir:
-
-1. Relative path (`/posts/1`) → aktif ortamın `api.base.url` değeri kullanılır
-2. `the base url is` ile senaryoya özel adres
-3. Doğrudan full URL (`https://baska-servis.com/health`)
-
----
-
-## API — yanıt
-
-`stepdefinition/api/ApiResponseStepDefinitions.java`
-
-| Adım | Not |
-| --- | --- |
-| `the response status should be <int>` |  |
-| `the response time should be under <int> ms` |  |
-| `the response field "<jsonPath>" should be "<value>"` | `[0].postId` gibi JsonPath |
-| `the response field "<jsonPath>" should not be null` |  |
-| `the response fields should be:` | DataTable, alan → beklenen değer |
-| `I save response field "<jsonPath>" as "<name>"` | Sonra `${ctx:<name>}` |
-| `I save the response to csv "<file>" with fields "<a,b,c>"` | `target/output/` altına yazar |
-
-### Zincirleme örneği
+Ayrı bir CSV/Excel katmanı yoktur; Cucumber'ın kendi `Examples` tablosu kullanılır:
 
 ```gherkin
-When I send GET to "/posts/1"
-Then the response status should be 200
-And I save response field "id" as "postId"
-And the request body from table:
-  | title  | Updated from context |
-  | userId | 7                    |
-When I send PUT to "/posts/${ctx:postId}"
-Then the response status should be 200
+Scenario Outline: Posts are fetched for several ids
+  When I send GET to "/posts/<id>"
+  Then the response field "userId" should be "<userId>"
+
+  Examples:
+    | id | userId |
+    | 1  | 1      |
+    | 12 | 2      |
 ```
 
 ---
 
-## Bilerek eklenmeyenler
+## Mobil — `stepdefinitions/mobile/ApiDemosStepDefinitions.java`
 
-| İstenen | Neden yok | Yerine |
-| --- | --- | --- |
-| `${random.email}`, `${today+3d}` | İlk sürümde kapsam dışı; ihtiyaç doğduğunda `Placeholders`'a tek bir kaynak olarak eklenir | Sabit veri veya CSV satırı |
-| `${notNull}`, `${anyOf:a,b}` | Bunlar veri değil doğrulama davranışıdır; yer tutucuya gizlenirse hata mesajı anlamsızlaşır | `the response field "<x>" should not be null` |
-| `@ByKey("Any element with text '*'")` gibi DSL | Tırnak ayrıştıran parser sessizce yanlış eşleşir | `Click to element with text "<text>"` |
-| Tek senaryoda tüm CSV satırlarını dönen adım | Raporda tek satır görünür, hangi satırın patladığı kaybolur | `Scenario Outline` + `Examples` |
+| Adım |
+| --- |
+| `Given the Api Demos home screen is visible` |
+| `When the user opens the Views menu` |
+| `Then the Buttons option should be visible` |
+| `When the user opens the Spinner screen` |
+| `When the user selects "<planet>" from the planet dropdown` |
+| `Then the selected planet should be "<planet>"` |
+| `When the user opens the Switches screen` |
+| `When the user taps the monitored switch` |
+| `Then the monitored switch should be <on\|off>` |
+| `Then the "<message>" toast should be visible` |
+
+## Mobil — `stepdefinitions/mobile/ControlsStepDefinitions.java`
+
+| Adım |
+| --- |
+| `Given the Controls screen is open` |
+| `When the user types "<text>" into the text field` |
+| `Then the text field should contain "<text>"` |
+| `When the user taps the first checkbox` |
+| `Then the first checkbox should be <checked\|unchecked>` |
+| `When the user selects the second radio button` |
+| `Then only the second radio button should be selected` |
+| `When the user taps the first toggle` |
+| `Then the first toggle should be on and labelled "<label>"` |
+| `When the user selects "<planet>" from the Controls planet dropdown` |
+| `Then the selected Controls planet should be "<planet>"` |
+| `Then the enabled Save button should be clickable` |
+| `Then the disabled Save button should not be clickable` |
+
+---
+
+## Generic adım — `stepdefinitions/common/GenericElementStepDefinitions.java`
+
+Sayfaya özel adım yazmadan tek bir elemana dokunmak gerektiğinde:
+
+| Adım |
+| --- |
+| `* Click to element "<KEY>" in "<PAGE_NAME>"` |
+
+```gherkin
+Given the Api Demos home screen is visible
+* Click to element "VIEWS_MENU" in "Api Demos Page"
+Then the Buttons option should be visible
+```
+
+- `<KEY>` = Page'in `namedElements()` metodunda kayıtlı ad, `<PAGE_NAME>` = o Page'in `PAGE_NAME` değeri.
+- Akış: `GenericElementStepDefinitions → CommonPage → PageElementCatalog → ElementActions`.
+- Gherkin'deki `*` wildcard değil; Given/When/Then yerine kullanılan nötr anahtar kelimedir.
+- **Locator'ın sahibi yine Page'dir.** Selector yalnızca Page içindeki `private static final By`
+  sabitinde tanımlıdır, katalogda ikinci kez yazılmaz. Katalog sadece key'i çözer.
+- Generic kullanıma açılan elemanın key'i Page'in `namedElements()` metodunda string olarak
+  açıkça kaydedilir. Reflection veya dosya/package taraması yok.
+- Yeni sayfa eklerken iki kayıt: (1) elemanlar Page'in `namedElements()` metoduna,
+  (2) Page'in kendisi `PageElementCatalog.index()` içine.
+- Eksik veya yanlış key derleme zamanında değil **koşumda** anlaşılır.
+- Step Definition `By` tipini hiç görmez; ad çözümü `CommonPage` içinde yapılır.
+
+**Bu ana yol değildir.** Hız ve keşif içindir: senaryo iş anlatmaz, UI script'ine döner. Kalıcı
+senaryolar Page Object üzerinden iş dili adımlarıyla yazılır.
+
+---
+
+## Mobil adım yazma kuralı
+
+Yeni ekran = 2 küçük dosya:
+
+```
+mobile/pages/LoginPage.java                        →  private static final By LOGIN = ...
+                                                      public void login(String phone, String password)
+stepdefinitions/mobile/LoginStepDefinitions.java   →  @When("the user logs in with {string} and {string}")
+```
+
+`ElementActions` içindeki teknik metotlar (`click`, `type`, `isVisible`, `scrollAndClick`,
+`isChecked`, `selectByText`, `byText`, `toast`) yalnızca Page sınıflarından çağrılır; Step
+Definition ve feature katmanına sızmaz.
+
+Değeri çalışma anında gelen locator'lar (dropdown seçeneği, liste satırı) katalogdan geçmez;
+Page `element.selectByText(...)` / `element.scrollAndClickText(...)` çağırır, locator'ı
+`ElementActions` üretir.
