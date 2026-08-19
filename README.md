@@ -44,12 +44,13 @@ src/test/java/com/commencis/interview/
   mobile/
     actions/
       MobileActions.java    TEK düşük seviye Appium katmanı: click/type/wait/scroll/back/keyboard
+    locators/
+      ApiDemosLocators.java ekranın By sabitleri; başka hiçbir şey yok
+      ControlsLocators.java · InterviewLocators.java
     pages/
       BasePage.java         ince taban: Page'lere MobileActions verir, başka iş yapmaz
       ApiDemosPage.java     ekranın iş akışı metotları (assertion yok)
-      ApiDemosLocators.java ekranın By sabitleri — package-private, dışarıdan görünmez
-      ControlsPage.java · ControlsLocators.java
-      InterviewPage.java · InterviewLocators.java
+      ControlsPage.java · InterviewPage.java
   stepdefinitions/
     api/ApiStepDefinitions.java            tüm API adımları (istek + doğrulama)
     mobile/ApiDemosStepDefinitions.java    @Given/@When/@Then — sadece Page çağrısı + assertion
@@ -93,7 +94,7 @@ Her katmanın cevapladığı soru:
 | `.feature` (step) | Senaryo ne anlatıyor? |
 | `stepdefinitions/` | Bu cümle hangi iş akışını çağırır, sonuç doğru mu? |
 | `mobile/pages/*Page` | Bu iş ekranda nasıl yapılır? |
-| `mobile/pages/*Locators` | O eleman ekranda nerede? |
+| `mobile/locators/*Locators` | O eleman ekranda nerede? |
 | `mobile/actions/MobileActions` | Elemana teknik olarak nasıl tıklanır/beklenir? |
 | `api/ApiClient` | İstek nasıl kurulur ve gönderilir? (assertion yok) |
 | `Hooks` + `Driver` | Oturum ne zaman açılıp kapanır? |
@@ -200,19 +201,19 @@ hem secret'ın gönderildiğini hem `target/allure-results` altındaki eklerde b
 
 ## 4. Yeni test eklemek
 
-### 1) Locators — `mobile/pages/`
+### 1) Locators — `mobile/locators/`
 
-Locator'lar ekranın kendi dosyasında durur, ama Page'den **ayrı** bir sınıftadır: Page yalnızca
-davranış listesi olarak okunur, ekranın elemanı değiştiğinde tek dosya güncellenir.
+Locator'lar Page'den **ayrı bir pakette** durur: Page yalnızca davranış listesi olarak okunur,
+ekranın elemanı değiştiğinde tek dosya güncellenir.
 
 ```java
-final class LoginLocators {                      // public DEĞİL
+public final class LoginLocators {               // Page ayri pakette, public olmali
 
     private static final String ID = "com.example:id/";
 
-    static final By PHONE    = AppiumBy.id(ID + "phone");
-    static final By PASSWORD = AppiumBy.id(ID + "password");
-    static final By LOGIN    = AppiumBy.id(ID + "loginButton");
+    public static final By PHONE    = AppiumBy.id(ID + "phone");
+    public static final By PASSWORD = AppiumBy.id(ID + "password");
+    public static final By LOGIN    = AppiumBy.id(ID + "loginButton");
 
     private LoginLocators() {
     }

@@ -2,17 +2,16 @@ package com.commencis.interview.mobile.pages;
 
 import com.commencis.interview.mobile.actions.MobileActions;
 
-import static com.commencis.interview.mobile.pages.ControlsLocators.CHECKBOX_1;
-import static com.commencis.interview.mobile.pages.ControlsLocators.DISABLED_SAVE_BUTTON;
-import static com.commencis.interview.mobile.pages.ControlsLocators.PLANET_SPINNER;
-import static com.commencis.interview.mobile.pages.ControlsLocators.PLANET_SPINNER_VALUE;
-import static com.commencis.interview.mobile.pages.ControlsLocators.RADIO_1;
-import static com.commencis.interview.mobile.pages.ControlsLocators.RADIO_2;
-import static com.commencis.interview.mobile.pages.ControlsLocators.SAVE_BUTTON;
-import static com.commencis.interview.mobile.pages.ControlsLocators.TEXT_FIELD;
-import static com.commencis.interview.mobile.pages.ControlsLocators.TOGGLE_1;
+import static com.commencis.interview.mobile.locators.ControlsLocators.CHECKBOX_1;
+import static com.commencis.interview.mobile.locators.ControlsLocators.DISABLED_SAVE_BUTTON;
+import static com.commencis.interview.mobile.locators.ControlsLocators.PLANET_SPINNER;
+import static com.commencis.interview.mobile.locators.ControlsLocators.PLANET_SPINNER_VALUE;
+import static com.commencis.interview.mobile.locators.ControlsLocators.RADIO_1;
+import static com.commencis.interview.mobile.locators.ControlsLocators.RADIO_2;
+import static com.commencis.interview.mobile.locators.ControlsLocators.SAVE_BUTTON;
+import static com.commencis.interview.mobile.locators.ControlsLocators.TEXT_FIELD;
+import static com.commencis.interview.mobile.locators.ControlsLocators.TOGGLE_1;
 
-/** Views &gt; Controls &gt; 1. Light Theme form ekraninin is akislari. Assertion icermez. */
 public class ControlsPage extends BasePage {
 
     public ControlsPage(MobileActions mobile) {

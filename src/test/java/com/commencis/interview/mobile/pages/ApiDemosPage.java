@@ -2,19 +2,15 @@ package com.commencis.interview.mobile.pages;
 
 import com.commencis.interview.mobile.actions.MobileActions;
 
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.ACCESSIBILITY_MENU;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.BUTTONS_OPTION;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.MONITORED_SWITCH;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.PLANET_DROPDOWN;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.PLANET_DROPDOWN_VALUE;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.SPINNER_OPTION;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.SWITCHES_OPTION;
-import static com.commencis.interview.mobile.pages.ApiDemosLocators.VIEWS_MENU;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.ACCESSIBILITY_MENU;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.BUTTONS_OPTION;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.MONITORED_SWITCH;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.PLANET_DROPDOWN;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.PLANET_DROPDOWN_VALUE;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.SPINNER_OPTION;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.SWITCHES_OPTION;
+import static com.commencis.interview.mobile.locators.ApiDemosLocators.VIEWS_MENU;
 
-/**
- * Api Demos ana menu ve Views ekranlarinin is akislari.
- * Assertion icermez: "bu is ekranda nasil yapilir"i bilir, "dogru mu"yu Step Definition soyler.
- */
 public class ApiDemosPage extends BasePage {
 
     /** Toast kisa omurludur; varsayilan bekleme yerine kisa bir kontrol yapilir. */
