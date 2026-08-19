@@ -20,6 +20,9 @@ ayar dosyası ayar tutsun diye buraya taşındı.
 | Server ayakta mı            | `Invoke-RestMethod http://127.0.0.1:4723/status`                                                                                                             |
 | 4723 portunu kullanan süreç | `Get-Process -Id (Get-NetTCPConnection -LocalPort 4723 -State Listen).OwningProcess`                                                                         |
 | 4723 portunu kapat          | `Get-NetTCPConnection -LocalPort 4723 -State Listen \| Select-Object -ExpandProperty OwningProcess -Unique \| ForEach-Object { Stop-Process -Id $_ -Force }` |
+| Allure Rapor temizliği için | `./mvnw.cmd clean`                                                                                                                                   |
+| Allure Raporu yeniden üret  | `.\mvnw.cmd allure:report`                                                                                                                                   |
+| Allure Raporu tarayıcıda aç | `Start-Process .\target\allure-report\index.html`                                                                                                           |
 
 Inspector web arayüzü: <http://127.0.0.1:4723/inspector> · Remote Host `127.0.0.1`, Port `4723`,
 Path `/`
@@ -86,10 +89,3 @@ içindeki static üreticilerdir — ekran locator'ı değil, platforma göre de�
 
 Kural: locator'ı yalnızca Page okur; `click`/`wait`/`scroll`/`back` gibi teknik dokunuşlar
 `MobileActions` içinde toplanır; Step Definition katmanında ne locator ne driver bulunur.
-
-## Allure terminal komutları
-
-| Komut                                             | Amaç                                  |
-|---------------------------------------------------|---------------------------------------|
-| `.\mvnw.cmd allure:report `                       | `Raporu yeniden üret (test koşmadan)` |
-| `Start-Process .\target\allure-report\index.html` | `Raporu tarayıcıda aç `               |
