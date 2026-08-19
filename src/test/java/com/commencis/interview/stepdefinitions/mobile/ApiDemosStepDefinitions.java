@@ -8,12 +8,7 @@ import io.cucumber.java.en.When;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * ApiDemos senaryolarinin Step Definition'lari.
- *
- * <p>Locator, bekleme veya driver kullanimi yoktur: yalnizca Page cagrisi ve dogrulama.
- * Page, PicoContainer tarafindan enjekte edilir; senaryo icinde elle olusturulmaz.
- */
+/** ApiDemos senaryolari: yalnizca Page cagrisi ve assertion; locator ve driver bulunmaz. */
 public class ApiDemosStepDefinitions {
 
     private final ApiDemosPage apiDemos;

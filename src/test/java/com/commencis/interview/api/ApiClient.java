@@ -8,8 +8,6 @@ import io.restassured.config.HttpClientConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.Filter;
 import io.restassured.filter.FilterContext;
-import io.restassured.filter.log.LogDetail;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.http.Header;
 import io.restassured.http.Method;
@@ -47,6 +45,8 @@ public class ApiClient {
 
     private final Map<String, Object> headers = new LinkedHashMap<>();
     private final Map<String, Object> queryParams = new LinkedHashMap<>();
+    private final Map<String, Object> formParams = new LinkedHashMap<>();
+    private final Map<String, Object> pathParams = new LinkedHashMap<>();
 
     private String baseUrl = Config.get("api.base.url");
     private Object body;
@@ -66,8 +66,38 @@ public class ApiClient {
         headers.putAll(values);
     }
 
+    /** Tek header eklemek icin kisa yol; senaryo boyunca sonraki isteklerde de kalir. */
+    public void header(String name, String value) {
+        headers.put(name, value);
+    }
+
+    /** URL'in sonuna ?key=value olarak eklenir. Filtreleme, pagination, search ve sorting gibi islemlerde kullanilir; request body degildir. */
+    public void bearerToken(String token) {
+        headers.put("Authorization", "Bearer " + token);
+    }
+
     public void queryParams(Map<String, String> values) {
         queryParams.putAll(values);
+    }
+
+    /** Degerleri request body'de application/x-www-form-urlencoded formatinda gonderir.
+     * OAuth/token veya form endpointlerinde kullanilir; JSON body isteyen endpointlerde kullanilmaz.
+     * grant_type=password, scope=openid, username, password, client_id */
+    public void formParams(Map<String, String> values) {
+        formParams.putAll(values);
+    }
+
+    /**
+     * URL sablonundaki {ad} yer tutucularini doldurur: adres string birlestirmeyle kurulmaz,
+     * encoding'i Rest Assured yapar. Gonderimden sonra temizlenir.
+     *
+     * <pre>
+     * api.pathParams(Map.of("id", id));
+     * api.get("/users/{id}");
+     * </pre>
+     */
+    public void pathParams(Map<String, ?> values) {
+        pathParams.putAll(values);
     }
 
     public void body(Object body) {
@@ -80,6 +110,11 @@ public class ApiClient {
 
     public Response get(String url) {
         return send(Method.GET, url);
+    }
+
+    /** Govdesiz POST; form parametreleriyle birlikte kullanilir. */
+    public Response post(String url) {
+        return send(Method.POST, url);
     }
 
     public Response post(String url, Object requestBody) {
@@ -114,6 +149,12 @@ public class ApiClient {
         if (!queryParams.isEmpty()) {
             request.queryParams(queryParams);
         }
+        if (!pathParams.isEmpty()) {
+            request.pathParams(pathParams);
+        }
+        if (!formParams.isEmpty()) {
+            request.contentType(ContentType.URLENC).formParams(formParams);
+        }
         if (body != null) {
             request.body(body);
         }
@@ -123,6 +164,8 @@ public class ApiClient {
         } finally {
             body = null;
             queryParams.clear();
+            formParams.clear();
+            pathParams.clear();
         }
     }
 
@@ -156,11 +199,6 @@ public class ApiClient {
             String token = Config.get("api.token");
             if (!token.isEmpty()) {
                 builder.addHeader("Authorization", "Bearer " + token);
-            }
-
-            // Ham istek/yaniti konsola basar. MASKELEME YOKTUR; yalnizca elle hata ayiklamak icin.
-            if (Config.getBoolean("api.log", false)) {
-                builder.log(LogDetail.ALL).addFilter(new ResponseLoggingFilter(LogDetail.BODY));
             }
 
             spec = builder.build();

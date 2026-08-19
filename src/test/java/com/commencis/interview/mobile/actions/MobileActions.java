@@ -18,32 +18,21 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+
 /**
- * Tek dusuk seviye Appium katmani: bekleme, tiklama, yazma, kaydirma, durum okuma.
- *
- * <p>"Bir elemana teknik olarak nasil dokunulur" sorusunun tek cevabi burasidir. Page Object'ler
- * yalnizca "bu is ekranda nasil yapilir"i yazar ({@code openViews()}), Step Definition'lar da
- * yalnizca Page cagirir. Boylece WebDriverWait / ExpectedConditions / gesture kodu tek dosyada
- * kalir ve ayni bekleme mantigi her ekranda tekrar yazilmaz.
- *
- * <p>Driver constructor'dan gelir ve disari acilmaz: hicbir Page veya Step Definition
- * {@link AppiumDriver}'a dogrudan erisemez. PicoContainer her senaryo icin bir tane uretir ve
- * ayni ornegi butun Page'lere verir.
+ * Tek dusuk seviye Appium katmani: bekleme, tiklama, yazma, kaydirma, klavye ve geri tusu.
+ * Yalnizca Page siniflarindan cagrilir; Step Definition bu sinifi gormez.
  */
-public class ElementActions {
+public class MobileActions {
 
     private static final int MAX_SCROLL_ATTEMPT = 5;
 
     private final Driver driver;
 
     /** PicoContainer bu constructor'i kullanir; senaryonun Driver'i enjekte edilir. */
-    public ElementActions(Driver driver) {
+    public MobileActions(Driver driver) {
         this.driver = driver;
     }
-
-    // ------------------------------------------------------------------
-    // Aksiyon
-    // ------------------------------------------------------------------
 
     /** Element tiklanabilir olana kadar bekleyip tiklar. */
     public void click(By locator) {
@@ -67,10 +56,7 @@ public class ElementActions {
         click(option);
     }
 
-    /**
-     * Secenegin degeri senaryodan gelen dropdown'lar icin: secenek locator'i calisma aninda
-     * uretilir, boylece Page tarafinda selector kurma kodu tekrarlanmaz.
-     */
+    /** Secenegin degeri senaryodan gelen dropdown'lar icin: secenek locator'i calisma aninda uretilir */
     public void selectByText(By dropdown, String optionText) {
         select(dropdown, byText(optionText));
     }
@@ -103,14 +89,9 @@ public class ElementActions {
         }
     }
 
-    /** Cihazin geri aksiyonu. */
     public void back() {
         appium().navigate().back();
     }
-
-    // ------------------------------------------------------------------
-    // Okuma
-    // ------------------------------------------------------------------
 
     public String text(By locator) {
         return waitVisible(locator).getText();
@@ -145,12 +126,6 @@ public class ElementActions {
         }
     }
 
-    /**
-     * Mesaji senaryodan gelen Toast dogrulamasi.
-     *
-     * <p>Toast kisa omurludur ve "gorunur" sayilmayabilir; bu yuzden varsayilan bekleme yerine
-     * kisa sureli bir varlik kontrolu yapilir.
-     */
     public boolean isToastVisible(String message, int seconds) {
         return isPresent(toast(message), seconds);
     }
@@ -165,10 +140,6 @@ public class ElementActions {
         return waitVisible(locator).isEnabled();
     }
 
-    // ------------------------------------------------------------------
-    // Bekleme
-    // ------------------------------------------------------------------
-
     public WebElement waitVisible(By locator) {
         return wait(defaultTimeout()).until(ExpectedConditions.visibilityOfElementLocated(locator));
     }
@@ -177,17 +148,7 @@ public class ElementActions {
         wait(defaultTimeout()).until(ExpectedConditions.invisibilityOfElementLocated(locator));
     }
 
-    // ------------------------------------------------------------------
-    // Calisma aninda uretilen locator'lar
-    // ------------------------------------------------------------------
-
-    /**
-     * Degeri senaryodan gelen elementler icin (dropdown secenegi, liste satiri). Ekranin sabit
-     * locator'lari kendi Page sinifinda durur; burada yalnizca calisma aninda uretilenler vardir.
-     *
-     * <p>Gelen metin selector ifadesinin icine gomuldugu icin escape edilir; aksi halde tirnak
-     * iceren bir deger ifadeyi bozar ve locator sessizce yanlis elemani bulur.
-     */
+    /** Ekran locator'i degil, platforma gore degisen teknik kalip; bu yuzden Locators'ta degil burada durur. */
     public static By byText(String text) {
         return Config.isAndroid()
                 ? AppiumBy.androidUIAutomator("new UiSelector().text(\"" + escapeUiAutomator(text) + "\")")
@@ -203,10 +164,6 @@ public class ElementActions {
         String literal = message.contains("'") ? "\"" + message + "\"" : "'" + message + "'";
         return AppiumBy.xpath("//android.widget.Toast[@text=" + literal + "]");
     }
-
-    // ------------------------------------------------------------------
-    // Ic yardimcilar
-    // ------------------------------------------------------------------
 
     /** Driver disari acilmaz: dusuk seviye cagrilar bu sinifin icinde kalir. */
     private AppiumDriver appium() {

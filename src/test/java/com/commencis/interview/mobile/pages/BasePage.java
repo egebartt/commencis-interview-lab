@@ -1,23 +1,16 @@
 package com.commencis.interview.mobile.pages;
 
-import com.commencis.interview.mobile.actions.ElementActions;
+import com.commencis.interview.mobile.actions.MobileActions;
 
 /**
- * Page Object'lerin ince tabani. Tek isi, senaryonun {@link ElementActions} ornegini alt
- * siniflara vermektir.
- *
- * <p>Dusuk seviye Appium kodu burada <b>degildir</b>: click/wait/type/scroll {@link ElementActions}
- * icinde yasar. Base sinif buyudukce her ekran istemeden ayni siniftan devraldigi genis bir API
- * tasir; ayirmak "davranis" (Page) ile "teknik dokunus" (ElementActions) sinirini gorunur tutar.
- *
- * <p>Alan {@code protected}'tir: {@code element.click(...)} cagrilari Page icinde kalir, Step
- * Definition ve feature tarafina sizmaz.
+ * Page Object'lerin ince tabani: tek isi senaryonun {@link MobileActions} ornegini alt siniflara
+ * vermektir. Bilerek buyutulmez; teknik metotlar {@link MobileActions} icinde kalir.
  */
 public abstract class BasePage {
 
-    protected final ElementActions element;
+    protected final MobileActions mobile;
 
-    protected BasePage(ElementActions element) {
-        this.element = element;
+    protected BasePage(MobileActions mobile) {
+        this.mobile = mobile;
     }
 }

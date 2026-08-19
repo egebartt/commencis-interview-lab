@@ -11,10 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Views &gt; Controls form ekraninin Step Definition'lari.
- *
- * <p>Bir senaryo birden fazla ekrana dokunabilir; ihtiyac duyulan her Page constructor'dan
- * enjekte edilir (burada menu + form).
+ * Views &gt; Controls form ekrani. Bir senaryo birden fazla ekrana dokunabilir; ihtiyac duyulan
+ * her Page constructor uzerinden enjekte edilir (burada menu + form).
  */
 public class ControlsStepDefinitions {
 

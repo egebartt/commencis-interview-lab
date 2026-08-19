@@ -19,6 +19,7 @@ import org.junit.platform.suite.api.Suite;
  * <p>{@code @SelectPackages("features")} alt klasorleri de kapsar; features/api ve
  * features/mobile icin ayri secici gerekmez.
  */
+
 @Suite
 @IncludeEngines("cucumber")
 @SelectPackages("features")

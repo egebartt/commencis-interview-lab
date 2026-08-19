@@ -107,51 +107,25 @@ Scenario Outline: Posts are fetched for several ids
 
 ---
 
-## Generic adım — `stepdefinitions/common/GenericElementStepDefinitions.java`
-
-Sayfaya özel adım yazmadan tek bir elemana dokunmak gerektiğinde:
-
-| Adım |
-| --- |
-| `* Click to element "<KEY>" in "<PAGE_NAME>"` |
-
-```gherkin
-Given the Api Demos home screen is visible
-* Click to element "VIEWS_MENU" in "Api Demos Page"
-Then the Buttons option should be visible
-```
-
-- `<KEY>` = Page'in `namedElements()` metodunda kayıtlı ad, `<PAGE_NAME>` = o Page'in `PAGE_NAME` değeri.
-- Akış: `GenericElementStepDefinitions → CommonPage → PageElementCatalog → ElementActions`.
-- Gherkin'deki `*` wildcard değil; Given/When/Then yerine kullanılan nötr anahtar kelimedir.
-- **Locator'ın sahibi yine Page'dir.** Selector yalnızca Page içindeki `private static final By`
-  sabitinde tanımlıdır, katalogda ikinci kez yazılmaz. Katalog sadece key'i çözer.
-- Generic kullanıma açılan elemanın key'i Page'in `namedElements()` metodunda string olarak
-  açıkça kaydedilir. Reflection veya dosya/package taraması yok.
-- Yeni sayfa eklerken iki kayıt: (1) elemanlar Page'in `namedElements()` metoduna,
-  (2) Page'in kendisi `PageElementCatalog.index()` içine.
-- Eksik veya yanlış key derleme zamanında değil **koşumda** anlaşılır.
-- Step Definition `By` tipini hiç görmez; ad çözümü `CommonPage` içinde yapılır.
-
-**Bu ana yol değildir.** Hız ve keşif içindir: senaryo iş anlatmaz, UI script'ine döner. Kalıcı
-senaryolar Page Object üzerinden iş dili adımlarıyla yazılır.
-
----
-
 ## Mobil adım yazma kuralı
 
-Yeni ekran = 2 küçük dosya:
+Yeni ekran = 3 küçük dosya:
 
 ```
-mobile/pages/LoginPage.java                        →  private static final By LOGIN = ...
-                                                      public void login(String phone, String password)
+mobile/pages/LoginLocators.java                    →  static final By LOGIN = ...   (public değil)
+mobile/pages/LoginPage.java                        →  public void login(String phone, String password)
 stepdefinitions/mobile/LoginStepDefinitions.java   →  @When("the user logs in with {string} and {string}")
 ```
 
-`ElementActions` içindeki teknik metotlar (`click`, `type`, `isVisible`, `scrollAndClick`,
-`isChecked`, `selectByText`, `byText`, `toast`) yalnızca Page sınıflarından çağrılır; Step
-Definition ve feature katmanına sızmaz.
+`MobileActions` içindeki teknik metotlar (`click`, `type`, `isVisible`, `scrollAndClick`,
+`isChecked`, `selectByText`, `back`, `hideKeyboard`) yalnızca Page sınıflarından çağrılır; Step
+Definition ve feature katmanına sızmaz. `back()` / `scrollDown()` gibi cihaz aksiyonları Page'de
+iş diline sarılır (`returnToMenu()`), Step Definition'dan doğrudan çağrılmaz.
 
-Değeri çalışma anında gelen locator'lar (dropdown seçeneği, liste satırı) katalogdan geçmez;
-Page `element.selectByText(...)` / `element.scrollAndClickText(...)` çağırır, locator'ı
-`ElementActions` üretir.
+Değeri çalışma anında gelen locator'lar (dropdown seçeneği, liste satırı) sabit olarak yazılmaz;
+Page `mobile.selectByText(...)` / `mobile.scrollAndClickText(...)` çağırır, locator'ı
+`MobileActions.byText` üretir.
+
+Feature'a locator veya element adı girmez. `* Click to element "X" in "Y"` tarzı generic adım
+bilerek **yoktur**: senaryoyu iş dilinden UI script'ine çevirir ve string olduğu için yazım hatası
+derlemede değil koşumda ortaya çıkar.

@@ -8,17 +8,18 @@ ayar dosyası ayar tutsun diye buraya taşındı.
 
 ## Komutlar (PowerShell)
 
-| Amaç | Komut |
-| --- | --- |
-| Emulator listesi | `emulator -list-avds` |
-| Emulator başlat | `emulator -avd Pixel8_API35` |
-| Bağlı cihazlar | `adb devices -l` |
-| Appium server | `appium.cmd` |
-| Appium + Inspector plugin | `appium.cmd --use-plugins=inspector` |
-| Server ayakta mı | `Invoke-RestMethod http://127.0.0.1:4723/status` |
-| Ekrandaki package/activity | `adb shell dumpsys window \| Select-String mCurrentFocus` |
-| 4723 portunu kullanan süreç | `Get-Process -Id (Get-NetTCPConnection -LocalPort 4723 -State Listen).OwningProcess` |
-| 4723 portunu kapat | `Get-NetTCPConnection -LocalPort 4723 -State Listen \| Select-Object -ExpandProperty OwningProcess -Unique \| ForEach-Object { Stop-Process -Id $_ -Force }` |
+| Amaç                        | Komut                                                                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Appium server               | `appium.cmd`                                                                                                                                                 |
+| Appium + Inspector plugin   | `appium.cmd --use-plugins=inspector`                                                                                                                         |
+| Bağlı cihazlar              | `adb devices -l`                                                                                                                                             |
+| Emulator listesi            | `emulator -list-avds`                                                                                                                                        |
+| Emulator başlat             | `emulator -avd Pixel8_API35`                                                                                                                                 |
+| Ekrandaki package/activity  | `adb shell dumpsys window \| Select-String mCurrentFocus`                                                                                                    |
+| Web inspector url           | `http://127.0.0.1:4723/inspector`                                                                                                                            |
+| Server ayakta mı            | `Invoke-RestMethod http://127.0.0.1:4723/status`                                                                                                             |
+| 4723 portunu kullanan süreç | `Get-Process -Id (Get-NetTCPConnection -LocalPort 4723 -State Listen).OwningProcess`                                                                         |
+| 4723 portunu kapat          | `Get-NetTCPConnection -LocalPort 4723 -State Listen \| Select-Object -ExpandProperty OwningProcess -Unique \| ForEach-Object { Stop-Process -Id $_ -Force }` |
 
 Inspector web arayüzü: <http://127.0.0.1:4723/inspector> · Remote Host `127.0.0.1`, Port `4723`,
 Path `/`
@@ -78,12 +79,13 @@ AppiumBy.xpath("//android.widget.Toast[@text='Monitored switch is on']");
 
 ## Bu projede nereye yazılır
 
-Sabit locator'lar ait oldukları ekranın Page sınıfında, `mobile/pages/*Page.java` içinde
-`private static final By` olarak durur — ayrı bir `locators` paketi yoktur. Değeri çalışma anında
-gelen locator'lar (`byText`, `toast`) `mobile/actions/ElementActions` içindeki static üreticilerdir.
+Sabit locator'lar ekranın kendi `mobile/pages/*Locators.java` sınıfında `static final By` olarak
+durur. Sınıf `public` değildir: aynı paketteki Page'ler okur, `stepdefinitions` paketi göremez.
+Değeri çalışma anında gelen locator'lar (`byText`, `toast`) `mobile/actions/MobileActions`
+içindeki static üreticilerdir — ekran locator'ı değil, platforma göre değişen teknik kalıptır.
 
-Kural: locator'ın sahibi Page'dir; `click`/`wait`/`scroll` gibi teknik dokunuşlar
-`ElementActions` içinde toplanır; Step Definition katmanında ne locator ne driver bulunur.
+Kural: locator'ı yalnızca Page okur; `click`/`wait`/`scroll`/`back` gibi teknik dokunuşlar
+`MobileActions` içinde toplanır; Step Definition katmanında ne locator ne driver bulunur.
 
 ## Allure terminal komutları
 

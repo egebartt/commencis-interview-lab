@@ -25,7 +25,8 @@ UiAutomator2 Driver 7.5.2, Node.js >= 20.19.
 
 ## 1. Proje yapısı
 
-Her klasörün tek bir görevi var. Bir ekran eklemek = **1 page + 1 step definition** dosyası.
+Her klasörün tek bir görevi var. Bir ekran eklemek = **1 locators + 1 page + 1 step definition**
+dosyası.
 
 > **Step ≠ Step Definition.** `.feature` içindeki Gherkin cümlesi *step*'tir; onu karşılayan
 > `@Given`/`@When`/`@Then` metodu *Step Definition*'dır. Java paketi bu yüzden `stepdefinitions`
@@ -42,20 +43,18 @@ src/test/java/com/commencis/interview/
     ApiClient.java       Rest Assured oturumu: istek kur → gönder → son yanıt (+ Allure eki)
   mobile/
     actions/
-      ElementActions.java   TEK düşük seviye Appium katmanı: click/type/wait/scroll/isChecked
+      MobileActions.java    TEK düşük seviye Appium katmanı: click/type/wait/scroll/back/keyboard
     pages/
-      BasePage.java         ince taban: Page'lere ElementActions verir, başka iş yapmaz
-      ApiDemosPage.java     ekranın private By sabitleri + iş akışı metotları (assertion yok)
-      ControlsPage.java
-      InterviewPage.java
-      CommonPage.java       ekrana bağlı olmayan aksiyon (generic adımlar için)
-      PageElementCatalog.java  generic adımlar için "element adı + sayfa adı" → By (ad çözümü)
+      BasePage.java         ince taban: Page'lere MobileActions verir, başka iş yapmaz
+      ApiDemosPage.java     ekranın iş akışı metotları (assertion yok)
+      ApiDemosLocators.java ekranın By sabitleri — package-private, dışarıdan görünmez
+      ControlsPage.java · ControlsLocators.java
+      InterviewPage.java · InterviewLocators.java
   stepdefinitions/
     api/ApiStepDefinitions.java            tüm API adımları (istek + doğrulama)
     mobile/ApiDemosStepDefinitions.java    @Given/@When/@Then — sadece Page çağrısı + assertion
     mobile/ControlsStepDefinitions.java
     mobile/InterviewMobileStepDefinitions.java
-    common/GenericElementStepDefinitions.java  tek generic adım (istisna yol, aşağıda)
   hooks/
     Hooks.java           @Before/@After: driver aç/kapat, screenshot, rapor metadata
     Bar2CucumberHooks.java     Bar2 Report plugin üretir — elle değiştirilmez
@@ -66,7 +65,7 @@ src/test/java/com/commencis/interview/
     InterviewLive.java   mülakat için tek dosyalık JUnit alanı (silinebilir)
   frameworktest/
     ConfigTest · TestContextTest · RedactionTest            altyapının kendi testleri;
-    PageElementCatalogTest · DynamicLocatorTest             cihaz istemez, her koşumda çalışır
+    DynamicLocatorTest                                      cihaz istemez, her koşumda çalışır
     ApiReportCanaryTest   uçtan uca: secret gönderilir ama rapora yazılmaz
 
 src/test/resources/
@@ -81,10 +80,9 @@ src/test/resources/
 ### Akış
 
 ```
-Mobil:   .feature → stepdefinitions/mobile/ → mobile/pages/ → ElementActions → Driver → Appium
-                                              ↑ locator'lar Page'in kendi private sabitleri
+Mobil:   .feature → stepdefinitions/mobile/ → mobile/pages/ → MobileActions → Driver → Appium
+                                              ↑ locator'ı yalnızca Page okur: *Locators
 API:     .feature → ApiStepDefinitions → ApiClient → Rest Assured → HTTP
-Generic: .feature → GenericElementStepDefinitions → CommonPage → PageElementCatalog → ElementActions
 Mülakat: @Test    → InterviewLive → Page veya ApiClient  (aynı altyapı)
 ```
 
@@ -94,8 +92,9 @@ Her katmanın cevapladığı soru:
 | --- | --- |
 | `.feature` (step) | Senaryo ne anlatıyor? |
 | `stepdefinitions/` | Bu cümle hangi iş akışını çağırır, sonuç doğru mu? |
-| `mobile/pages/` | Bu iş ekranda nasıl yapılır — ve o eleman nerede? |
-| `mobile/actions/ElementActions` | Elemana teknik olarak nasıl tıklanır/beklenir? |
+| `mobile/pages/*Page` | Bu iş ekranda nasıl yapılır? |
+| `mobile/pages/*Locators` | O eleman ekranda nerede? |
+| `mobile/actions/MobileActions` | Elemana teknik olarak nasıl tıklanır/beklenir? |
 | `api/ApiClient` | İstek nasıl kurulur ve gönderilir? (assertion yok) |
 | `Hooks` + `Driver` | Oturum ne zaman açılıp kapanır? |
 
@@ -108,14 +107,14 @@ Cucumber'da kalıtım yerine **hook + scenario-scoped injection** kullanılır. 
 | `@BeforeEach` driver açar | `Hooks.startDriver()` — `@Before("@mobile")` |
 | `@AfterEach` driver kapatır | `Hooks.quitDriver()` — `@After("@mobile")` |
 | Base sınıfın `driver` alanı | `core/Driver` — PicoContainer her senaryoya bir tane verir |
-| Base sınıfın helper metotları | `mobile/actions/ElementActions` |
+| Base sınıfın helper metotları | `mobile/actions/MobileActions` |
 
 PicoContainer zinciri kurar; hiçbir yerde `new` veya static yoktur:
 
 ```
 Hooks(Driver)  ─────────────────────────────────────────────────┐
                                                                 ├─ aynı senaryoda AYNI Driver
-ApiDemosStepDefinitions(ApiDemosPage) → ApiDemosPage(ElementActions) → ElementActions(Driver) ─┘
+ApiDemosStepDefinitions(ApiDemosPage) → ApiDemosPage(MobileActions) → MobileActions(Driver) ─┘
 ```
 
 `@api` senaryosu cihaz açmaz: driver yalnızca `@mobile` tag'inde başlatılır ve `ApiClient` ilk
@@ -173,7 +172,6 @@ Ortam değişkeni adı: nokta → alt çizgi, büyük harf (`api.token` → `API
 | `api.base.url` | Opsiyonel: doluysa relative path (`/posts/1`), boşsa senaryoda full URL |
 | `api.timeout` | Bağlantı/okuma zaman aşımı (saniye) |
 | `api.token` | **Boş bırakılır** — `-Dapi.token=...` veya `API_TOKEN` ile geçilir |
-| `api.log` | Rest Assured konsol log'u. **Maskeleme yoktur**, varsayılan kapalı |
 | `appium.url` | Dışarıdan başlatılan Appium server adresi |
 | `element.timeout` | Tüm explicit wait'lerin üst sınırı (saniye) |
 | `android.udid` | `adb devices -l` çıktısındaki seri numara |
@@ -193,7 +191,6 @@ yapılır (`core/Redaction.java`) ve isim karşılaştırması normalize edilir 
 | Environment paneli | `api.base.url` ve `appium.url` içindeki kullanıcı bilgisi |
 | `byte[]` / `InputStream` gövde | İçerik rapora **hiç yazılmaz** (stream okumak gönderilecek veriyi tüketirdi) |
 | Assertion hata mesajı | Gövde mesaja konmaz; mesaj Allure ekine yönlendirir |
-| `api.log=true` konsol çıktısı | **Maskelenmez** — bu yüzden varsayılan olarak kapalı |
 
 **Gönderilen istek ve alınan `Response` değişmez**, yalnızca rapor kopyası maskelenir.
 `RedactionTest` fonksiyonları tek tek doğrular; `ApiReportCanaryTest` gerçek bir HTTP isteği atıp
@@ -203,56 +200,76 @@ hem secret'ın gönderildiğini hem `target/allure-results` altındaki eklerde b
 
 ## 4. Yeni test eklemek
 
-### 1) Page — `mobile/pages/`
+### 1) Locators — `mobile/pages/`
 
-Locator'lar ekranın kendi dosyasında durur: elemanın nerede olduğu ile o elemanla ne yapıldığı
-aynı yerde okunur, ekran değiştiğinde tek dosya güncellenir.
+Locator'lar ekranın kendi dosyasında durur, ama Page'den **ayrı** bir sınıftadır: Page yalnızca
+davranış listesi olarak okunur, ekranın elemanı değiştiğinde tek dosya güncellenir.
 
 ```java
-public class LoginPage extends BasePage {
-
-    /** Generic adımlar için okunabilir ad; yalnızca o yol kullanılacaksa gerekli. */
-    static final String PAGE_NAME = "Login Page";
+final class LoginLocators {                      // public DEĞİL
 
     private static final String ID = "com.example:id/";
 
-    private static final By PHONE    = AppiumBy.id(ID + "phone");
-    private static final By PASSWORD = AppiumBy.id(ID + "password");
-    private static final By LOGIN    = AppiumBy.id(ID + "loginButton");
+    static final By PHONE    = AppiumBy.id(ID + "phone");
+    static final By PASSWORD = AppiumBy.id(ID + "password");
+    static final By LOGIN    = AppiumBy.id(ID + "loginButton");
 
-    public LoginPage(ElementActions element) {   // PicoContainer bu constructor'ı kullanır
-        super(element);
-    }
-
-    public void login(String phone, String password) {
-        element.type(PHONE, phone);
-        element.type(PASSWORD, password);
-        element.click(LOGIN);
-    }
-
-    public boolean isLoginButtonVisible() {
-        return element.isVisible(LOGIN);
+    private LoginLocators() {
     }
 }
 ```
 
-Page **assertion yapmaz**: "ekranda bu iş nasıl yapılır"ı bilir, "doğru mu"yu Step Definition
-söyler. Locator'lar `private`'tır — dışarı sızmaz, Step Definition onları göremez.
+Sınıf ve alanlar `public` değildir; Page'ler aynı pakette olduğu için erişir, `stepdefinitions`
+başka pakette olduğu için **derleyici seviyesinde** erişemez. Ayrı bir `locators` paketi açmak
+sınıfı `public` yapmayı zorunlu kılardı ve bu sınırı konvansiyona düşürürdü.
 
 Aynı elemanın Android/iOS locator'ı farklıysa platforma göre seçilir:
 
 ```java
-private static final By LOGIN = Config.isAndroid()
+static final By LOGIN = Config.isAndroid()
         ? AppiumBy.id("com.example:id/loginButton")
         : AppiumBy.accessibilityId("loginButton");
 ```
 
 Locator seçim önceliği: **accessibilityId > id > UiAutomator selector > XPath**.
 Değeri çalışma anında gelen elemanlar (dropdown seçeneği, liste satırı) sabit locator olarak
-yazılmaz; `element.selectByText(...)` / `element.scrollAndClickText(...)` çağrılır, locator'ı
-`ElementActions` üretir.
+yazılmaz; `mobile.selectByText(...)` / `mobile.scrollAndClickText(...)` çağrılır, locator'ı
+`MobileActions` üretir.
 
-### 2) Step Definition — `stepdefinitions/mobile/`
+### 2) Page — `mobile/pages/`
+
+```java
+public class LoginPage extends BasePage {
+
+    public LoginPage(MobileActions mobile) {   // PicoContainer bu constructor'ı kullanır
+        super(mobile);
+    }
+
+    public void login(String phone, String password) {
+        mobile.type(PHONE, phone);
+        mobile.type(PASSWORD, password);
+        mobile.click(LOGIN);
+    }
+
+    public boolean isLoginButtonVisible() {
+        return mobile.isVisible(LOGIN);
+    }
+}
+```
+
+Locator'lar tek satırlık static import ile gelir: `import static ...pages.LoginLocators.LOGIN;`
+
+Page **assertion yapmaz**: "ekranda bu iş nasıl yapılır"ı bilir, "doğru mu"yu Step Definition
+söyler. `back()`, `scrollDown()`, `hideKeyboard()` gibi teknik aksiyonlar da Step Definition'dan
+doğrudan çağrılmaz; Page içinde iş diline sarılır:
+
+```java
+public void returnToMenu() {
+    mobile.back();
+}
+```
+
+### 3) Step Definition — `stepdefinitions/mobile/`
 
 ```java
 public class LoginStepDefinitions {
@@ -277,7 +294,7 @@ public class LoginStepDefinitions {
 
 Step Definition'da **locator ve driver bulunmaz**: yalnızca Page çağrısı ve assertion.
 
-### 3) Feature — `resources/features/`
+### 4) Feature — `resources/features/`
 
 ```gherkin
 @mobile
@@ -292,32 +309,14 @@ Sorumluluk sınırı için §1'deki katman tablosuna bak.
 
 API tarafında endpoint başına sınıf yazılmaz: adres, gövde ve parametreler senaryodan gelir.
 Hazır adımlar: [docs/step-catalog.md](docs/step-catalog.md)
+Response okuma ve doğrulama: [docs/api-cheatsheet.md](docs/api-cheatsheet.md)
 
-### İstisna: generic adım
+### Neden generic adım yok
 
-Sayfaya özel adım yazmadan tek bir elemana dokunmak gerekirse:
-
-```gherkin
-Given the Api Demos home screen is visible
-* Click to element "VIEWS_MENU" in "Api Demos Page"
-Then the Buttons option should be visible
-```
-
-Akış: `GenericElementStepDefinitions → CommonPage → PageElementCatalog → ElementActions`.
-Gherkin'e locator değil **element adı** girer.
-
-**Locator'ın sahibi yine Page'dir.** Selector yalnızca Page içindeki `private static final By`
-sabitinde tanımlıdır, katalogda ikinci kez yazılmaz. Generic kullanıma açılan elemanın **key'i**
-ise Page'in package-private `namedElements()` metodunda string olarak açıkça kaydedilir; katalog
-o adı çözer, Step Definition `By` tipini hiç görmez. Reflection veya dosya/package taraması yok.
-
-Yeni sayfa açarken iki kayıt gerekir: generic kullanıma açılacak elemanlar Page'in
-`namedElements()` metoduna, Page'in kendisi `PageElementCatalog.index()` içine yazılır. Eksik veya
-yanlış key derleme zamanında değil **koşumda** ortaya çıkar.
-
-Bu yol **hız ve keşif içindir**. Ana yol Page Object üzerinden iş dili adımlarıdır
-(`When the user opens the Views menu`), çünkü generic adımlar feature dosyasını UI script'ine
-çevirir.
+`* Click to element "VIEWS_MENU" in "Api Demos Page"` gibi bir adım bilerek **yoktur**. Feature
+dosyasını iş dilinden UI script'ine çevirir, element ve sayfa adı string olduğu için yazım hatası
+derlemede değil koşumda patlar, ve karşılığında Page Object'in zaten verdiğinden fazlasını vermez.
+Kalıcı senaryolar iş dili adımlarıyla yazılır: `When the user opens the Views menu`.
 
 ---
 
@@ -425,10 +424,10 @@ rapor üretmek içindir.
 
 | Ne | Durum |
 | --- | --- |
-| `mvnw clean verify` | ✅ 53 test, 0 fail — 34 framework testi + 12 API senaryosu geçti, 7 mobil senaryo tag filtresi nedeniyle **skipped** |
+| `mvnw clean verify` | ✅ 46 test, 0 fail — 27 framework testi + 12 API senaryosu geçti, 7 mobil senaryo tag filtresi nedeniyle **skipped** |
 | Allure HTML | ✅ `target/allure-report/index.html` üretildi |
 | `mvnw clean verify "-Dit.test=InterviewLive#<api metotları>"` | ✅ 3 test, 0 fail |
-| Glue eşleşmesi (dry-run, `@api or @mobile`) | ✅ 19 senaryo, undefined step yok; generic adım dahil eşleşti |
+| Glue eşleşmesi (dry-run, `@api or @mobile`) | ✅ 19 senaryo, 0 skipped, undefined step yok |
 | Mobil senaryolar uçtan uca | ⛔ Bu makinede Appium server ve bağlı cihaz yok — **koşulmadı** |
 
 > Skipped ≠ passed: tag filtresi dışında kalan senaryolar çalışmaz, build yine yeşil kalır.

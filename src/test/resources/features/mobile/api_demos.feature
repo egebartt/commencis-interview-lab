@@ -4,11 +4,9 @@ Feature: Api Demos navigation
   Appium server ve bagli bir Android cihaz/emulator gerektirir.
   Kosum: .\mvnw.cmd clean verify "-Dcucumber.filter.tags=@mobile"
 
-  # Generic adim ornegi: sayfaya ozel adim yazmadan tek bir elemana dokunmak icin.
-  # Ana kullanim asagidaki is dili adimlaridir; bu satir istisna yolun calistigini gosterir.
   Scenario: The Views menu is opened
     Given the Api Demos home screen is visible
-    * Click to element "VIEWS_MENU" in "Api Demos Page"
+    When the user opens the Views menu
     Then the Buttons option should be visible
 
   Scenario: A planet is selected from the Spinner dropdown
