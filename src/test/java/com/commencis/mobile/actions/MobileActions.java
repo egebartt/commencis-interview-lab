@@ -11,16 +11,18 @@ import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.remote.RemoteWebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
 /**
- * Tek dusuk seviye Appium katmani: bekleme, tiklama, yazma, kaydirma, klavye ve geri tusu.
+ * Tek dusuk seviye Appium katmani: bekleme, tiklama, yazma, kaydirma, swipe, klavye ve geri tusu.
  * Yalnizca Page siniflarindan cagrilir; Step Definition bu sinifi gormez.
  */
 public class MobileActions {
@@ -39,8 +41,13 @@ public class MobileActions {
         wait(defaultTimeout()).until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
 
-    /** Alani temizleyip yeni metni yazar. */
-    public void type(By locator, String text) {
+    /** Alani temizlemeden yazar: mevcut metnin sonuna ekler. */
+    public void sendKeys(By locator, String text) {
+        waitVisible(locator).sendKeys(text);
+    }
+
+    /** Alani temizleyip yeni metni yazar; dolu olabilecek alanlarda bunu kullanin. */
+    public void clearSendKeys(By locator, String text) {
         WebElement element = waitVisible(locator);
         element.clear();
         element.sendKeys(text);
@@ -61,6 +68,12 @@ public class MobileActions {
         select(dropdown, byText(optionText));
     }
 
+    /** Uzun dropdown listelerinde secenek ekranin altinda kalabilir: acar, kaydirir, tiklar. */
+    public void selectByScrollingToText(By dropdown, String optionText) {
+        click(dropdown);
+        scrollAndClickText(optionText);
+    }
+
     /** Element gorunene kadar kaydirip tiklar; listede asagida kalan satirlar icin. */
     public void scrollAndClick(By locator) {
         scrollUntilVisible(locator).click();
@@ -79,6 +92,40 @@ public class MobileActions {
         scroll("up");
     }
 
+    /** Ekranin ortasindan sola kaydirir: carousel, onboarding, tab gecisi. */
+    public void swipeLeft() {
+        swipe("left");
+    }
+
+    public void swipeRight() {
+        swipe("right");
+    }
+
+    /** Tek bir elementin uzerinde swipe: liste satirini kaydirip aksiyon acmak gibi. */
+    public void swipeLeft(By locator) {
+        swipeElement(locator, "left");
+    }
+
+    public void swipeRight(By locator) {
+        swipeElement(locator, "right");
+    }
+
+    /** Uzun basma; context menu acan satirlar icin. */
+    public void longPress(By locator) {
+        String elementId = elementId(waitVisible(locator));
+        if (!Config.isAndroid()) {
+            appium().executeScript("mobile: touchAndHold", Map.of("elementId", elementId, "duration", 1));
+            return;
+        }
+        appium().executeScript("mobile: longClickGesture", Map.of("elementId", elementId, "duration", 1_000));
+    }
+
+    /** Locator'i olmayan bir noktaya dokunur: harita, canvas, kapatma alani. */
+    public void tapAt(int x, int y) {
+        appium().executeScript(Config.isAndroid() ? "mobile: clickGesture" : "mobile: tap",
+                Map.of("x", x, "y", y));
+    }
+
     public void hideKeyboard() {
         if (appium() instanceof HidesKeyboard keyboard) {
             try {
@@ -95,6 +142,12 @@ public class MobileActions {
 
     public String text(By locator) {
         return waitVisible(locator).getText();
+    }
+
+    /** Ayni locator'a uyan tum elementlerin metni; liste/sonuc dogrulamalari icin. */
+    public List<String> texts(By locator) {
+        waitVisible(locator);
+        return appium().findElements(locator).stream().map(WebElement::getText).toList();
     }
 
     public String attribute(By locator, String name) {
@@ -210,6 +263,30 @@ public class MobileActions {
             appium().executeScript("mobile: scroll", Map.of("direction", direction));
             return;
         }
+        appium().executeScript("mobile: scrollGesture", screenGesture(direction));
+    }
+
+    /** Scroll icerigi tarar, swipe tek bir hamledir; sayfa/kart gecislerinde swipe kullanilir. */
+    private void swipe(String direction) {
+        if (!Config.isAndroid()) {
+            appium().executeScript("mobile: swipe", Map.of("direction", direction));
+            return;
+        }
+        appium().executeScript("mobile: swipeGesture", screenGesture(direction));
+    }
+
+    private void swipeElement(By locator, String direction) {
+        String elementId = elementId(waitVisible(locator));
+        if (!Config.isAndroid()) {
+            appium().executeScript("mobile: swipe", Map.of("elementId", elementId, "direction", direction));
+            return;
+        }
+        appium().executeScript("mobile: swipeGesture",
+                Map.of("elementId", elementId, "direction", direction, "percent", 0.75));
+    }
+
+    /** UiAutomator2 gesture'lari hedef alani piksel olarak ister: ekranin ortasindaki %80. */
+    private Map<String, Object> screenGesture(String direction) {
         Dimension screen = appium().manage().window().getSize();
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("left", (int) (screen.getWidth() * 0.1));
@@ -218,7 +295,12 @@ public class MobileActions {
         arguments.put("height", (int) (screen.getHeight() * 0.8));
         arguments.put("direction", direction);
         arguments.put("percent", 0.75);
-        appium().executeScript("mobile: scrollGesture", arguments);
+        return arguments;
+    }
+
+    /** mobile: komutlari WebElement degil, elementin oturum icindeki id'sini bekler. */
+    private static String elementId(WebElement element) {
+        return ((RemoteWebElement) element).getId();
     }
 
     /** UiSelector cift tirnakli Java string sozdizimi kullanir. */

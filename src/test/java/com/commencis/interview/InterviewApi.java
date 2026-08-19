@@ -1,12 +1,7 @@
 package com.commencis.interview;
 
 import com.commencis.api.ApiClient;
-import com.commencis.core.Driver;
-import com.commencis.mobile.actions.MobileActions;
-import com.commencis.mobile.pages.ApiDemosPage;
-import com.commencis.mobile.pages.InterviewPage;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -16,22 +11,52 @@ import java.util.Map;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("Interview live coding")
-class InterviewLive {
-
-    /** Driver ilk mobil aksiyonda acilir; API testleri cihaz istemez. */
-    private final Driver driver = new Driver();
-
-    /** Cucumber yolunda bu satiri PicoContainer yapar. */
-    private final MobileActions mobile = new MobileActions(driver);
+/**
+ * Mulakatin API tarafi. Cihaz veya Appium server istemez, tek basina kosar.
+ * Mobil karsiligi: {@link InterviewMobile}.
+ */
+@DisplayName("Interview live coding - API")
+class InterviewApi {
 
     private final ApiClient api = new ApiClient();
 
-    @AfterEach
-    void quitDriver() {
-        driver.quit();
-    }
+    @Test
+    @DisplayName("API - get book by id")
+    void getBookById() {
 
+        /**
+         api.formParams(Map.of(
+         "Authorization", "Bearer 123",
+         "client_id", "api-platform-swagger",
+         "client_secret", "123123"
+         ));
+
+
+
+         String requestBody = """
+         {
+         "book": "https://openlibrary.org/books/OL2055137M.json",
+         "condition": "https://schema.org/NewCondition"
+         }
+         """;
+         */
+
+
+        //Response response = api.post("/admin/books", requestBody);
+        Response usersResponse = api.get("https://fake-json-api.mock.beeceptor.com/users");
+
+        int id = usersResponse.jsonPath().getInt("[0].id");
+
+        api.pathParams(Map.of("id", id));
+
+        Response response = api.get("https://fake-json-api.mock.beeceptor.com/users/{id}");
+
+        response.prettyPrint();
+        assertEquals(200, response.statusCode());
+
+
+
+    }
 
     @Test
     @DisplayName("API - basliga gore kitaplari filtreleme")
@@ -234,43 +259,6 @@ class InterviewLive {
         );
     }
 
-    @Test
-    @DisplayName("API - get book by id")
-    void getBookById() {
-
-        /**
-        api.formParams(Map.of(
-                "Authorization", "Bearer 123",
-                "client_id", "api-platform-swagger",
-                "client_secret", "123123"
-        ));
-
-
-
-        String requestBody = """
-            {
-              "book": "https://openlibrary.org/books/OL2055137M.json",
-              "condition": "https://schema.org/NewCondition"
-            }
-            """;
-         */
-
-
-        //Response response = api.post("/admin/books", requestBody);
-        Response usersResponse = api.get("https://fake-json-api.mock.beeceptor.com/users");
-
-        int id = usersResponse.jsonPath().getInt("[0].id");
-
-        api.pathParams(Map.of("id", id));
-
-        Response response = api.get("https://fake-json-api.mock.beeceptor.com/users/{id}");
-
-        response.prettyPrint();
-        assertEquals(200, response.statusCode());
-
-
-
-    }
 
     @Test
     void getUserGeneric() {
@@ -378,30 +366,4 @@ class InterviewLive {
         assertEquals("Rest Assured Test", title);
         assertTrue(id > 0);
     }
-
-
-    @Test
-    @DisplayName("Mobil - Views menusu acilir")
-    void opensViewsMenu() {
-        InterviewPage interviewPage = new InterviewPage(mobile);
-
-        assertTrue(interviewPage.isHomeVisible(), "Interview ana ekrani gorunmedi");
-        interviewPage.openViews();
-
-        assertTrue(interviewPage.isButtonsVisible(), "Interview Views ekraninda Buttons gorunmedi");
-    }
-
-    @Test
-    @DisplayName("Mobil - Spinner'dan gezegen secilir")
-    void selectsPlanetFromSpinner() {
-        ApiDemosPage apiDemos = new ApiDemosPage(mobile);
-
-        apiDemos.openViews();
-        apiDemos.openSpinner();
-        apiDemos.selectPlanet("Jupiter");
-
-        assertEquals("Jupiter", apiDemos.selectedPlanet());
-    }
-
-
 }

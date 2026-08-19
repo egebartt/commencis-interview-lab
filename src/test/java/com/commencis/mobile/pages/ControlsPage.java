@@ -24,7 +24,7 @@ public class ControlsPage extends BasePage {
 
     /** Alani temizleyip yazar ve klavyeyi kapatir; klavye alttaki kontrolleri ortmesin. */
     public void enterText(String text) {
-        mobile.type(TEXT_FIELD, text);
+        mobile.clearSendKeys(TEXT_FIELD, text);
         mobile.hideKeyboard();
     }
 

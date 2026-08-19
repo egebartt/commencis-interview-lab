@@ -238,7 +238,8 @@
           <!-- Varsayilan kosum feature dosyalarini calistirir. Hangi senaryolarin secilecegini
                junit-platform.properties icindeki cucumber.filter.tags belirler (varsayilan @api),
                komut satirindan "-Dcucumber.filter.tags=@mobile" ile ezilir.
-               Mulakat dosyasi ayri istenir: -Dit.test=InterviewLive (includes'u ezer). -->
+               Mulakat dosyalari ayri istenir: -Dit.test=InterviewMobile veya InterviewApi
+               (includes'u ezer). -->
           <includes>
             <include>**/CucumberRunnerTest.java</include>
             <!-- Cihaz istemeyen altyapi testleri her kosumda calisir. -->

@@ -3,8 +3,9 @@
 Tek modüllü Java 21 / Maven test projesi: **Cucumber + Appium + Rest Assured**, sonuçlar
 **Allure HTML** raporuna çıkar. Spring/Lombok yok, kod üretimi yok, static driver yok.
 
-Testlerin kalıcı yeri `.feature` dosyalarıdır. Mülakatta hızlı case yazmak için tek dosyalık bir
-JUnit alanı vardır (`interview/InterviewLive.java`) — prova bitince silinebilir.
+Testlerin kalıcı yeri `.feature` dosyalarıdır. Mülakatta hızlı case yazmak için ayrı bir
+JUnit alanı vardır: `interview/InterviewMobile.java` (Appium) ve `interview/InterviewApi.java`
+(Rest Assured) — prova bitince silinebilir.
 
 | | |
 | --- | --- |
@@ -63,7 +64,8 @@ src/test/java/com/commencis/interview/
   runner/
     CucumberRunnerTest.java    feature'ları çalıştıran tek giriş noktası
   interview/
-    InterviewLive.java   mülakat için tek dosyalık JUnit alanı (silinebilir)
+    InterviewMobile.java mülakat için mobil JUnit alanı — Appium reference testi (silinebilir)
+    InterviewApi.java    mülakat için API JUnit alanı — cihaz istemez (silinebilir)
   frameworktest/
     ConfigTest · TestContextTest · RedactionTest            altyapının kendi testleri;
     DynamicLocatorTest                                      cihaz istemez, her koşumda çalışır
@@ -84,7 +86,8 @@ src/test/resources/
 Mobil:   .feature → stepdefinitions/mobile/ → mobile/pages/ → MobileActions → Driver → Appium
                                               ↑ locator'ı yalnızca Page okur: *Locators
 API:     .feature → ApiStepDefinitions → ApiClient → Rest Assured → HTTP
-Mülakat: @Test    → InterviewLive → Page veya ApiClient  (aynı altyapı)
+Mülakat: @Test    → InterviewMobile → MobileActions veya Page   (aynı altyapı)
+         @Test    → InterviewApi    → ApiClient
 ```
 
 Her katmanın cevapladığı soru:
@@ -131,8 +134,9 @@ Tek komut kalıbı var: **`.\mvnw.cmd clean verify`**. Ne çalışacağını tag
 | --- | --- | --- |
 | `.\mvnw.cmd clean verify` | API senaryoları (varsayılan `@api`) | Hayır |
 | `.\mvnw.cmd clean verify "-Dcucumber.filter.tags=@mobile"` | Mobil senaryolar | **Evet** |
-| `.\mvnw.cmd clean verify "-Dit.test=InterviewLive"` | Mülakat dosyasının tamamı | Evet (mobil testleri için) |
-| `.\mvnw.cmd clean verify "-Dit.test=InterviewLive#getsExistingPost"` | Tek metot | Hayır |
+| `.\mvnw.cmd clean verify "-Dit.test=InterviewMobile"` | Mülakatın mobil dosyası | **Evet** |
+| `.\mvnw.cmd clean verify "-Dit.test=InterviewApi"` | Mülakatın API dosyası | Hayır |
+| `.\mvnw.cmd clean verify "-Dit.test=InterviewMobile#mobileReferences"` | Tek metot | **Evet** |
 
 PowerShell'de `-D...` içeren argümanları **tırnak içine al**.
 
@@ -247,8 +251,8 @@ public class LoginPage extends BasePage {
     }
 
     public void login(String phone, String password) {
-        mobile.type(PHONE, phone);
-        mobile.type(PASSWORD, password);
+        mobile.clearSendKeys(PHONE, phone);
+        mobile.clearSendKeys(PASSWORD, password);
         mobile.click(LOGIN);
     }
 
@@ -409,11 +413,17 @@ Komut kopyaları: [docs/appium-cheatsheet.md](docs/appium-cheatsheet.md)
 
 ## 7. Mülakat dosyası
 
-`interview/InterviewLive.java` tek dosyadır ve projede hiçbir şey ona bağlı değildir; prova bitince
-silinir. Sınıf adı bilerek `*Test` ile bitmez, böylece varsayılan koşumda çalışmaz:
+`interview/` altında iki dosya vardır ve projede hiçbir şey onlara bağlı değildir; prova bitince
+silinir. Sınıf adları bilerek `*Test` ile bitmez, böylece varsayılan koşumda çalışmazlar:
+
+| Dosya | İçerik |
+| --- | --- |
+| `InterviewMobile.java` | Appium: `mobileReferences()` tek ekranda text kontrolü, tıklama, dropdown, radio, checkbox, toggle ve swipe'ı bir arada gösterir. Locator'lar sınıfın başındadır — mülakatta değişen tek yer orasıdır. |
+| `InterviewApi.java` | Rest Assured: `apiReferences()` header/query/path/form, JsonPath ve assertion kalıplarını gösterir. Cihaz istemez. |
 
 ```powershell
-.\mvnw.cmd clean verify "-Dit.test=InterviewLive#opensViewsMenu"
+.\mvnw.cmd clean verify "-Dit.test=InterviewMobile#mobileReferences"
+.\mvnw.cmd clean verify "-Dit.test=InterviewApi#apiReferences"
 ```
 
 IntelliJ'de tek testi sağ tık → Run ile çalıştırmak daha hızlıdır; terminal koşumu asıl olarak
@@ -427,8 +437,9 @@ rapor üretmek içindir.
 | --- | --- |
 | `mvnw clean verify` | ✅ 46 test, 0 fail — 27 framework testi + 12 API senaryosu geçti, 7 mobil senaryo tag filtresi nedeniyle **skipped** |
 | Allure HTML | ✅ `target/allure-report/index.html` üretildi |
-| `mvnw clean verify "-Dit.test=InterviewLive#<api metotları>"` | ✅ 3 test, 0 fail |
+| `mvnw clean verify "-Dit.test=InterviewApi#<api metotları>"` | ✅ 3 test, 0 fail |
 | Glue eşleşmesi (dry-run, `@api or @mobile`) | ✅ 19 senaryo, 0 skipped, undefined step yok |
-| Mobil senaryolar uçtan uca | ⛔ Bu makinede Appium server ve bağlı cihaz yok — **koşulmadı** |
+| `mvnw verify "-Dit.test=InterviewMobile#mobileReferences"` | ✅ 1 test, 0 fail — emulator-5554 + Appium 3.6.0 üzerinde koşuldu |
+| Mobil `.feature` senaryoları uçtan uca | ⛔ Ayrıca koşulmadı |
 
 > Skipped ≠ passed: tag filtresi dışında kalan senaryolar çalışmaz, build yine yeşil kalır.

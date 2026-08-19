@@ -1,9 +1,6 @@
 @mobile
 Feature: Api Demos navigation
 
-  Appium server ve bagli bir Android cihaz/emulator gerektirir.
-  Kosum: .\mvnw.cmd clean verify "-Dcucumber.filter.tags=@mobile"
-
   Scenario: The Views menu is opened
     Given the Api Demos home screen is visible
     When the user opens the Views menu

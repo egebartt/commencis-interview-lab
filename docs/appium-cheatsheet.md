@@ -80,6 +80,37 @@ AppiumBy.xpath("//*[@text='Premium Paket']/parent::android.view.ViewGroup//andro
 AppiumBy.xpath("//android.widget.Toast[@text='Monitored switch is on']");
 ```
 
+## MobileActions metotları (mülakatta kullanılacak liste)
+
+Hepsi `By` alır, bekleme içeridedir; ayrıca `WebDriverWait` yazmaya gerek yoktur.
+Çalışan örnek: `interview/InterviewMobile.java` → `mobileReferences()`.
+
+| İşlem | Metot |
+| --- | --- |
+| Tıklama | `mobile.click(locator)` |
+| Ekranda değilse kaydırıp tıklama | `mobile.scrollAndClick(locator)` · `mobile.scrollAndClickText("Views")` |
+| Yazma / temizleme | `mobile.clearSendKeys(locator, "metin")` · `mobile.clear(locator)` |
+| Temizlemeden ekleme | `mobile.sendKeys(locator, "metin")` |
+| Klavyeyi kapatma | `mobile.hideKeyboard()` |
+| Text okuma | `mobile.text(locator)` · `mobile.texts(locator)` (liste) |
+| Attribute okuma | `mobile.attribute(locator, "checked")` — `text`, `content-desc`, `enabled`… |
+| Ekranda bu yazı var mı | `mobile.isVisible(MobileActions.byText("Save"))` |
+| Görünürlük / negatif kontrol | `mobile.isVisible(locator)` · `mobile.isVisible(locator, 2)` · `mobile.isPresent(locator, 2)` |
+| Checkbox / radio / switch seçili mi | `mobile.isChecked(locator)` |
+| Buton aktif mi | `mobile.isEnabled(locator)` |
+| Dropdown: aç + seç | `mobile.selectByText(dropdown, "Jupiter")` · `mobile.select(dropdown, option)` |
+| Dropdown: seçenek listenin altındaysa | `mobile.selectByScrollingToText(dropdown, "Saturn")` |
+| Sağa / sola swipe | `mobile.swipeLeft()` · `mobile.swipeRight()` · element üzerinde: `mobile.swipeLeft(locator)` |
+| Yukarı / aşağı kaydırma | `mobile.scrollDown()` · `mobile.scrollUp()` |
+| Uzun basma | `mobile.longPress(locator)` |
+| Koordinata dokunma | `mobile.tapAt(540, 1200)` |
+| Geri tuşu | `mobile.back()` |
+| Toast (yalnız Android) | `mobile.isToastVisible("Kaydedildi", 3)` |
+| Açık bekleme | `mobile.waitVisible(locator)` · `mobile.waitInvisible(locator)` |
+
+Checkbox/radio/toggle'da `click` durumu **tersine çevirir**, mutlak değer atamaz: önce
+`isChecked` ile bak, gerekirse tıkla.
+
 ## Bu projede nereye yazılır
 
 Sabit locator'lar ekranın kendi `mobile/pages/*Locators.java` sınıfında `static final By` olarak
