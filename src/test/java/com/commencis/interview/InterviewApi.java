@@ -4,60 +4,147 @@ import com.commencis.api.ApiClient;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Mulakatin API tarafi. Cihaz veya Appium server istemez, tek basina kosar.
- * Mobil karsiligi: {@link InterviewMobile}.
- */
+
 @DisplayName("Interview live coding - API")
 class InterviewApi {
 
+    private static final Logger log = LoggerFactory.getLogger(InterviewApi.class);
     private final ApiClient api = new ApiClient();
 
     @Test
-    @DisplayName("API - get book by id")
-    void getBookById() {
+    @DisplayName("Interview API - saucelabs Scenario")
+    void interViewApi() {
 
         /**
-         api.formParams(Map.of(
-         "Authorization", "Bearer 123",
-         "client_id", "api-platform-swagger",
-         "client_secret", "123123"
-         ));
-
-
-
-         String requestBody = """
-         {
-         "book": "https://openlibrary.org/books/OL2055137M.json",
-         "condition": "https://schema.org/NewCondition"
-         }
-         """;
+         * API:
+         *
+         * document: https://documenter.getpostman.com/view/4012288/TzK2bEa8#bcd848eb-d7ae-4b73-9a0c-59eb2254017e
+         * adımlar:
+         * 1. users altında add user yap
+         * 2. get user ile eklenen userı doğrula
+         * 3. update user ile firstname ve lastname'i random değerler ile değiştir
+         * 4. get user ile değişen değerleri doğrula
+         * 5. oluşturulan userı sil
+         * 6. get user ile userın silindiğini doğrula
          */
 
+        api.baseUrl("https://thinking-tester-contact-list.herokuapp.com");
 
-        //Response response = api.post("/admin/books", requestBody);
-        Response usersResponse = api.get("https://fake-json-api.mock.beeceptor.com/users");
+        String random = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
-        int id = usersResponse.jsonPath().getInt("[0].id");
+        String firstName = "Test" + random;
+        String lastName = "User" + random;
+        String email = "commencis." + random + "@example.com";
+        String password = "commencis123";
 
-        api.pathParams(Map.of("id", id));
 
-        Response response = api.get("https://fake-json-api.mock.beeceptor.com/users/{id}");
+        System.out.println("------------ 1. users altında add user yap ------------");
 
-        response.prettyPrint();
-        assertEquals(200, response.statusCode());
 
+        Map<String, String> createBody = Map.of(
+                "firstName", firstName,
+                "lastName", lastName,
+                "email", email,
+                "password", password
+        );
+
+        Response createResponse = api.post("/users", createBody);
+        createResponse.prettyPrint();
+
+        assertAll(
+                () -> assertEquals(201, createResponse.statusCode()),
+                () -> assertEquals(firstName, createResponse.path("user.firstName")),
+                () -> assertEquals(lastName, createResponse.path("user.lastName")),
+                () -> assertEquals(email, createResponse.path("user.email")),
+                () -> assertNotNull(createResponse.path("user._id")),
+                () -> assertNotNull(createResponse.path("token"))
+        );
+
+        String token = createResponse.path("token");
+        api.bearerToken(token);
+
+
+        System.out.println("------------ 2. get user ile eklenen userı doğrula ------------");
+
+
+        Response getResponse = api.get("/users/me");
+        getResponse.prettyPrint();
+
+        assertAll(
+                () -> assertEquals(200, getResponse.statusCode()),
+                () -> assertEquals(firstName, getResponse.path("firstName")),
+                () -> assertEquals(lastName, getResponse.path("lastName")),
+                () -> assertEquals(email, getResponse.path("email"))
+        );
+
+
+        System.out.println("------------ 3. update user ile firstname ve lastname'i random değerler ile değiştir ------------");
+
+
+        String updatedFirstName = "Updated" + random;
+        String updatedLastName = "Commencis" + random;
+
+        Map<String, String> updateBody = Map.of(
+                "firstName", updatedFirstName,
+                "lastName", updatedLastName
+        );
+
+        Response updateResponse = api.patch("/users/me", updateBody);
+        updateResponse.prettyPrint();
+
+        assertAll(
+                () -> assertEquals(200, updateResponse.statusCode()),
+                () -> assertEquals(updatedFirstName, updateResponse.path("firstName")),
+                () -> assertEquals(updatedLastName, updateResponse.path("lastName"))
+        );
+
+
+        System.out.println("------------ 4. get user ile değişen değerleri doğrula ------------");
+
+
+        Response updatedGetResponse = api.get("/users/me");
+        updatedGetResponse.prettyPrint();
+
+        assertAll(
+                () -> assertEquals(200, updatedGetResponse.statusCode()),
+                () -> assertEquals(updatedFirstName, updatedGetResponse.path("firstName")),
+                () -> assertEquals(updatedLastName, updatedGetResponse.path("lastName")),
+                () -> assertEquals(email, updatedGetResponse.path("email"))
+        );
+
+
+        System.out.println("------------ 5. oluşturulan userı sil ------------");
+
+
+        Response deleteResponse = api.delete("/users/me");
+        deleteResponse.prettyPrint();
+
+        assertEquals(200, deleteResponse.statusCode());
+
+
+        System.out.println("------------ 6. get user ile userın silindiğini doğrula ------------");
+
+
+        Response deletedUserResponse = api.get("/users/me");
+        deletedUserResponse.prettyPrint();
+
+        assertEquals(401, deletedUserResponse.statusCode(), "Silinen kullanici ayni token ile erisilebilir olmamali");
 
 
     }
 
+
+    // EXAMPLE, NOT WORKING
     @Test
     @DisplayName("API - basliga gore kitaplari filtreleme")
     void shouldFilterBooksByTitle() {
@@ -103,6 +190,7 @@ class InterviewApi {
 
     }
 
+    // EXAMPLE, NOT WORKING
     @Test
     @DisplayName("API - Rest Assured reference")
     void apiReferences() {

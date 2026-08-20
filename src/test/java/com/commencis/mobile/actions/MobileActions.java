@@ -5,6 +5,7 @@ import com.commencis.core.Driver;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.HidesKeyboard;
+import io.appium.java_client.remote.SupportsContextSwitching;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.StaleElementReferenceException;
@@ -19,6 +20,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -28,6 +30,8 @@ import java.util.Map;
 public class MobileActions {
 
     private static final int MAX_SCROLL_ATTEMPT = 5;
+    private static final String NATIVE_CONTEXT = "NATIVE_APP";
+    private static final String WEBVIEW_CONTEXT_PREFIX = "WEBVIEW";
 
     private final Driver driver;
 
@@ -140,6 +144,46 @@ public class MobileActions {
         appium().navigate().back();
     }
 
+    /** Hybrid ekranlarda acik olan context'ler: NATIVE_APP ve varsa WEBVIEW_*. */
+    public Set<String> contexts() {
+        return contextSwitching().getContextHandles();
+    }
+
+    public String context() {
+        return contextSwitching().getContext();
+    }
+
+    /** Acik olan WebView context'inin adi; yoksa bos string. */
+    public String webViewContext() {
+        return contexts().stream()
+                .filter(context -> context.startsWith(WEBVIEW_CONTEXT_PREFIX))
+                .findFirst()
+                .orElse("");
+    }
+
+    /**
+     * WebView icindeki elementler native agacta gorunmez; once context degistirilir.
+     *
+     * <p>Bu gecis cihazdaki Chrome/WebView surumune uyan bir Chromedriver ister. Yalnizca
+     * context adini dogrulamak icin {@link #webViewContext()} yeterlidir, gecis gerekmez.
+     */
+    public void switchToWebViewContext() {
+        String webViewContext = webViewContext();
+        if (webViewContext.isEmpty()) {
+            throw new IllegalStateException("WebView context bulunamadi: " + contexts());
+        }
+        contextSwitching().context(webViewContext);
+    }
+
+    public void switchToNativeContext() {
+        contextSwitching().context(NATIVE_CONTEXT);
+    }
+
+    /** Yalnizca WebView context'inde anlamlidir: acik olan sayfanin adresi. */
+    public String url() {
+        return appium().getCurrentUrl();
+    }
+
     public String text(By locator) {
         return waitVisible(locator).getText();
     }
@@ -219,6 +263,13 @@ public class MobileActions {
     }
 
     /** Driver disari acilmaz: dusuk seviye cagrilar bu sinifin icinde kalir. */
+    private SupportsContextSwitching contextSwitching() {
+        if (appium() instanceof SupportsContextSwitching contextSwitching) {
+            return contextSwitching;
+        }
+        throw new UnsupportedOperationException("Context gecisi bu driver icin desteklenmiyor.");
+    }
+
     private AppiumDriver appium() {
         return driver.get();
     }
@@ -312,4 +363,6 @@ public class MobileActions {
     private static String escapePredicate(String value) {
         return value.replace("\\", "\\\\").replace("'", "\\'");
     }
+
+
 }

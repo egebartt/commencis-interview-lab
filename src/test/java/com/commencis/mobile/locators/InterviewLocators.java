@@ -3,43 +3,35 @@ package com.commencis.mobile.locators;
 import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.By;
 
-/**
- * Mulakat dosyalarinin ({@code InterviewMobile}, {@code InterviewPage}) kullandigi locator'lar.
- * Ekran degisirse yalnizca bu dosya duzenlenir; test ve page kodu ayni kalir.
- *
- * <p>Oncelik sirasi: accessibilityId &gt; id &gt; androidUIAutomator &gt; className &gt; xpath
- *
- * <pre>
- * AppiumBy.accessibilityId("Views")                                content-desc
- * AppiumBy.id("io.appium.android.apis:id/edit")                    resource-id
- * AppiumBy.androidUIAutomator("new UiSelector().text(\"Save\")")   text / ozellik
- * AppiumBy.className("android.widget.CheckBox")                    tur
- * AppiumBy.xpath("//*[contains(@text,'Save')]")                    son care
- * </pre>
- */
+
 public final class InterviewLocators {
 
-    private static final String ID_PREFIX = "io.appium.android.apis:id/";
+    private static final String ID_PREFIX = "com.saucelabs.mydemoapp.android:id/";
 
-    // Ana ekran ve menu
-    public static final By HOME_ANCHOR = AppiumBy.accessibilityId("Accessibility");
-    public static final By VIEWS_MENU = AppiumBy.accessibilityId("Views");
-    public static final By BUTTONS_OPTION = AppiumBy.accessibilityId("Buttons");
+    public static final By CATALOG_PRODUCTS = AppiumBy.id(ID_PREFIX + "productRV");
+    public static final By CATALOG_PRODUCT_TITLE = AppiumBy.id(ID_PREFIX + "titleTV");
+    public static final By CATALOG_PRODUCT_PRICE = AppiumBy.id(ID_PREFIX + "priceTV");
 
-    // Ekran: ApiDemos > Views > Controls > 1. Light Theme
-    public static final By TEXT_FIELD = AppiumBy.id(ID_PREFIX + "edit");
-    public static final By CHECKBOX = AppiumBy.id(ID_PREFIX + "check1");
-    public static final By RADIO_1 = AppiumBy.id(ID_PREFIX + "radio1");
-    public static final By RADIO_2 = AppiumBy.id(ID_PREFIX + "radio2");
-    public static final By TOGGLE = AppiumBy.id(ID_PREFIX + "toggle1");
-    public static final By DROPDOWN = AppiumBy.id(ID_PREFIX + "spinner1");
-    public static final By SAVE_BUTTON = AppiumBy.id(ID_PREFIX + "button");
-    public static final By DISABLED_SAVE_BUTTON = AppiumBy.id(ID_PREFIX + "button_disabled");
+    public static final By SORT_BUTTON =
+            AppiumBy.accessibilityId("Shows current sorting order and displays available sorting options");
+    public static final By SORT_PRICE_ASCENDING = AppiumBy.id(ID_PREFIX + "priceAscCL");
 
-    /** Secili deger dropdown'in kendi text'inde degil, icindeki TextView'da durur. */
-    public static final By DROPDOWN_VALUE = AppiumBy.androidUIAutomator(
-            "new UiSelector().resourceId(\"" + ID_PREFIX + "spinner1\")"
-                    + ".childSelector(new UiSelector().resourceId(\"android:id/text1\"))");
+    public static final By PRODUCT_DETAIL_TITLE = AppiumBy.id(ID_PREFIX + "productTV");
+    public static final By PRODUCT_DETAIL_ADD_TO_CART = AppiumBy.accessibilityId("Tap to add product to cart");
+
+    public static final By MENU_BUTTON = AppiumBy.accessibilityId("View menu");
+    public static final By MENU_LIST = AppiumBy.id(ID_PREFIX + "menuRV");
+    public static final By MENU_WEBVIEW_ITEM = AppiumBy.androidUIAutomator("new UiSelector().text(\"WebView\")");
+
+    public static final By WEBVIEW_URL_INPUT = AppiumBy.id(ID_PREFIX + "urlET");
+    public static final By WEBVIEW_GO_BUTTON = AppiumBy.accessibilityId("Tap to view content of given url");
+    public static final By WEBVIEW = AppiumBy.id(ID_PREFIX + "webView");
+
+    /** Katalogdaki urunler ayni resourceId'yi paylasir; sirasi calisma aninda instance ile secilir. */
+    public static By catalogProduct(int order) {
+        return AppiumBy.androidUIAutomator("new UiSelector().resourceId(\"" + ID_PREFIX + "productIV\")"
+                + ".instance(" + (order - 1) + ")");
+    }
 
     private InterviewLocators() {
     }

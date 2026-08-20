@@ -17,6 +17,7 @@ import io.restassured.specification.FilterableResponseSpecification;
 import io.restassured.specification.RequestSpecification;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -39,6 +40,15 @@ import static io.restassured.RestAssured.given;
  * ek cagrisi gerekmez.
  */
 public class ApiClient {
+
+    /**
+     * Rest Assured iceride locale vermeden toLowerCase() cagirir; tr_TR makinede "I" harfi
+     * "ı" olur ve non-2xx yanitlar Response yerine exception olarak doner. Maven kosumu ayni
+     * degeri -Duser.language=en ile gecer, bu blok IDE'den kosulan testleri de kapsar.
+     */
+    static {
+        Locale.setDefault(Locale.US);
+    }
 
     /** http:// gibi bir sema ile basliyorsa adres full URL kabul edilir. */
     private static final Pattern ABSOLUTE_URL = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.\\-]*://");

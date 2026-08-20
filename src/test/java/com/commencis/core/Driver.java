@@ -10,6 +10,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.function.Consumer;
 
@@ -51,7 +53,7 @@ public class Driver {
         // android.app doluysa APK kurulur; bos ise cihazdaki uygulama package/activity ile acilir.
         String app = Config.get("android.app");
         if (!app.isEmpty()) {
-            options.setApp(app);
+            options.setApp(resolveApp(app));
         } else {
             options.setAppPackage(Config.require("android.app.package"));
             options.setAppActivity(Config.require("android.app.activity"));
@@ -75,7 +77,7 @@ public class Driver {
 
         String app = Config.get("ios.app");
         if (!app.isEmpty()) {
-            options.setApp(app);
+            options.setApp(resolveApp(app));
         } else {
             options.setBundleId(Config.require("ios.bundle.id"));
         }
@@ -84,6 +86,30 @@ public class Driver {
         options.setNewCommandTimeout(Duration.ofSeconds(Config.getInt("appium.command.timeout", 120)));
 
         return new IOSDriver(serverUrl(), options);
+    }
+
+    private static String resolveApp(String app) {
+        Path path = Path.of(app);
+        if (path.isAbsolute()) {
+            return app;
+        }
+        Path resolved = projectRoot().resolve(path).normalize();
+        if (!Files.isRegularFile(resolved)) {
+            throw new IllegalStateException("Uygulama dosyasi bulunamadi: " + resolved
+                    + ". Yolu config.properties icindeki app anahtarindan kontrol edin.");
+        }
+        return resolved.toString();
+    }
+
+    /** IDE calisma dizini alt klasor olabilir; pom.xml bulunana kadar yukari cikilir. */
+    private static Path projectRoot() {
+        Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        for (Path candidate = directory; candidate != null; candidate = candidate.getParent()) {
+            if (Files.isRegularFile(candidate.resolve("pom.xml"))) {
+                return candidate;
+            }
+        }
+        return directory;
     }
 
     /** Appium server bu proje tarafindan baslatilmaz, yalnizca adresi okunur. */

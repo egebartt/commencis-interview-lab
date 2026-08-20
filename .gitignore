@@ -4,9 +4,11 @@ target/
 # allure-maven downloads the Node runtime and the Allure 3 report generator here on first run.
 .allure/
 
-# Never commit application binaries. The ApiDemos APK is downloaded per machine
-# and passed with android.app=... in config.properties (see README).
+# Test edilen uygulama apps/ altinda repo icinde tasinir: klonlayan kisi APK indirmez,
+# android.app=apps/... relative yolu her makinede ayni dosyayi gosterir.
+# Bunun disindaki uygulama binary'leri commit edilmez.
 *.apk
+!apps/*.apk
 *.ipa
 *.app/
 
