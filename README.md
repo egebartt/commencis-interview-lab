@@ -117,7 +117,7 @@ Tümü proje kökünden, PowerShell'de. `-D` içeren argümanları **tırnak iç
 ```
 
 ```powershell
-.\mvnw.cmd clean verify "-Dit.test=InterviewApi#contactListUserLifecycle"
+.\mvnw.cmd clean verify "-Dit.test=InterviewApi#interViewApi"
 ```
 
 ### Mobil — emülatör + Appium açık olmalı
@@ -134,6 +134,10 @@ Tümü proje kökünden, PowerShell'de. `-D` içeren argümanları **tırnak iç
 
 Feature dosyasındaki senaryonun ya da test metodunun yanındaki yeşil butona basmak yeterli;
 ek VM option gerekmiyor.
+
+> **Çıktıdaki `Tests run:` sayısına bak.** `-Dit.test=...` içindeki **metot adı** yanlış
+> yazılırsa Failsafe hata vermez; `Tests run: 0` yazıp **BUILD SUCCESS** döner. Sınıf adı yanlışsa
+> build kırılır, metot adı için bu koruma yok.
 
 ---
 

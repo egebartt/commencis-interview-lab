@@ -134,7 +134,7 @@ Tek komut kalıbı var: **`.\mvnw.cmd clean verify`**. Ne çalışacağını tag
 | --- | --- | --- |
 | `.\mvnw.cmd clean verify "-Dcucumber.filter.tags=@api"` | API senaryoları | Hayır |
 | `.\mvnw.cmd clean verify "-Dcucumber.filter.tags=@mobile and @interview"` | Mülakatın mobil senaryosu | **Evet** |
-| `.\mvnw.cmd clean verify "-Dit.test=InterviewApi#contactListUserLifecycle"` | Mülakatın API testi | Hayır |
+| `.\mvnw.cmd clean verify "-Dit.test=InterviewApi#interViewApi"` | Mülakatın API testi | Hayır |
 | `.\mvnw.cmd clean verify "-Dit.test=InterviewMobile#interViewMobile"` | Mülakatın mobil testi | **Evet** |
 | `.\mvnw.cmd clean verify "-Dit.test=InterviewMobile#mobileReferences"` | Referans testi — ApiDemos APK ister | **Evet** |
 
